@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Musician's Toolkit</title>
+    <title>Musician's Practice Toolkit</title>
     <script src="https://unpkg.com/wavesurfer.js@7"></script>
     <style>
         :root {
             --primary: #22c55e;
+            --primary-hover: #16a34a;
             --danger: #ef4444;
+            --danger-hover: #dc2626;
             --bg: #0f172a;
             --surface: #1e293b;
             --border: #334155;
@@ -23,46 +25,145 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 2rem;
+            line-height: 1.5;
         }
+
+        h1 { text-align: center; margin-bottom: 2rem; }
+        h2 { margin-top: 0; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 1.5rem; }
 
         .card {
             background: var(--surface);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1.5rem;
+            border-radius: 16px;
+            padding: 2rem;
             margin-bottom: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
             text-align: center;
         }
 
-        #micVisualizer {
+        /* --- Metronome Layout --- */
+        #flash-bar {
             width: 100%;
-            height: 100px;
-            background: #000;
-            margin-bottom: 1rem;
-            border-radius: 8px;
-            display: none;
+            height: 12px;
+            background: var(--border);
+            border-radius: 6px;
+            margin-bottom: 2rem;
+            transition: background 0.05s ease-out;
+        }
+        #flash-bar.active {
+            background: var(--primary);
+            box-shadow: 0 0 20px var(--primary);
         }
 
+        .metronome-controls {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .wheel-outer {
+            position: relative;
+            width: 240px;
+            height: 240px;
+            user-select: none;
+            touch-action: none;
+        }
+
+        #wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle, #1e293b 30%, #0f172a 100%);
+            border: 12px solid var(--border);
+            position: relative;
+            cursor: grab;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.7);
+        }
+
+        /* The "knob" indicator on the wheel */
+        #wheel::after {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 14px;
+            height: 14px;
+            background: var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        .bpm-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+        }
+
+        #bpm-display {
+            font-size: 4rem;
+            font-weight: 900;
+            color: var(--text);
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        #bpm-input {
+            width: 140px;
+            background: transparent;
+            border: none;
+            color: var(--primary);
+            font-size: 4rem;
+            font-weight: 900;
+            text-align: center;
+            display: none;
+            outline: none;
+        }
+
+        .bpm-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+            justify-content: center;
+        }
+
+        /* --- Generic Buttons --- */
         button {
             background: var(--primary);
             color: white;
             border: none;
-            padding: 0.8rem 1.5rem;
-            border-radius: 8px;
+            padding: 0.8rem 1.8rem;
+            border-radius: 10px;
             font-weight: bold;
             cursor: pointer;
-            position: relative;
-            z-index: 10; /* Ensure buttons are clickable above anything else */
+            transition: all 0.2s;
+            font-size: 1rem;
         }
+        button:hover { background: var(--primary-hover); transform: translateY(-1px); }
+        button:active { transform: translateY(0); }
+        button.is-active { background: var(--danger); }
+        button.secondary { background: var(--border); color: var(--text); }
+        button.secondary:hover { background: #475569; }
 
-        button:hover { filter: brightness(1.1); }
-        button:active { transform: translateY(1px); }
-        button.recording { background: var(--danger); animation: pulse 1.5s infinite; }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
+        /* --- Recorder UI --- */
+        #micVisualizer {
+            width: 100%;
+            height: 80px;
+            background: #000;
+            margin-bottom: 1.5rem;
+            border-radius: 8px;
+            display: none;
         }
 
         .recording-item {
@@ -73,202 +174,300 @@
             border-radius: 12px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 1rem;
+            text-align: left;
         }
 
         .wf-box { 
             height: 100px; 
-            background: rgba(0,0,0,0.3); 
-            border-radius: 6px;
-            position: relative; /* Keeps children relative to this box */
-            overflow: hidden;   /* Stops the scrubber from bleeding out */
-            cursor: pointer;
+            background: rgba(0,0,0,0.5); 
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
         }
         
-        .controls { 
-            display: flex; 
-            gap: 10px; 
-            margin-top: 5px;
-            pointer-events: auto; /* Explicitly allow clicks */
-        }
-
-        .btn-sm { padding: 8px 16px; font-size: 14px; }
-        .btn-danger { background: var(--danger); }
+        .controls { display: flex; gap: 0.5rem; }
+        .btn-sm { padding: 0.5rem 1rem; font-size: 0.85rem; }
     </style>
 </head>
 <body>
 
-    <h1>Musician's Toolkit</h1>
+    <h1>Musician's Practice Toolkit</h1>
 
     <div class="card">
-        <canvas id="micVisualizer"></canvas>
-        <button id="recordBtn">Start Recording</button>
-        <div id="status" style="margin-top:10px; height: 20px; color: var(--primary)"></div>
+        <h2>Metronome</h2>
+        <div id="flash-bar"></div>
+        
+        <div class="metronome-controls">
+            <div class="wheel-outer">
+                <div class="bpm-container">
+                    <div id="bpm-display">120</div>
+                    <input type="number" id="bpm-input" min="40" max="280">
+                    <div class="bpm-label">BPM</div>
+                </div>
+                <div id="wheel"></div>
+            </div>
+
+            <div class="action-buttons">
+                <button id="metroToggle">Start Metronome</button>
+                <button id="tapBtn" class="secondary">Tap Tempo</button>
+            </div>
+
+            <div style="display:flex; gap: 2rem; color: var(--text-muted); font-size: 0.9rem;">
+                <label style="cursor:pointer"><input type="checkbox" id="audioOn" checked> Audio Clave</label>
+                <label style="cursor:pointer"><input type="checkbox" id="visualOn" checked> Visual Flash</label>
+            </div>
+        </div>
     </div>
 
-    <div id="list"></div>
+    <div class="card">
+        <h2>Audio Memos</h2>
+        <canvas id="micVisualizer"></canvas>
+        <button id="recordToggle">Start Recording</button>
+        <div id="status" style="margin-top:1rem; height: 20px; color: var(--primary); font-weight: bold; font-size: 0.8rem;"></div>
+    </div>
+
+    <div id="memoList"></div>
 
     <script>
-        let db, stream, recorder, chunks = [];
-        let animationId;
-        const canvas = document.getElementById('micVisualizer');
-        const ctx = canvas.getContext('2d');
-        const recordBtn = document.getElementById('recordBtn');
-        const statusEl = document.getElementById('status');
+        // --- AUDIO ENGINE ---
+        let audioCtx;
+        function getAudioCtx() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            return audioCtx;
+        }
 
-        // 1. Initialize IndexedDB
+        // --- DATABASE ---
+        let db;
         const initDB = () => {
             return new Promise((res) => {
-                const req = indexedDB.open('ToolkitDB', 1);
-                req.onupgradeneeded = (e) => e.target.result.createObjectStore('memos', {keyPath: 'id'});
+                const req = indexedDB.open('MusicianToolkitDB', 3);
+                req.onupgradeneeded = (e) => {
+                    const dbObj = e.target.result;
+                    if (!dbObj.objectStoreNames.contains('memos')) dbObj.createObjectStore('memos', { keyPath: 'id' });
+                };
                 req.onsuccess = (e) => { db = e.target.result; res(); };
             });
         };
 
-        // 2. Real-time Waveform Drawing (Canvas)
-        function drawLiveWave(analyser) {
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
-            
-            const draw = () => {
-                animationId = requestAnimationFrame(draw);
-                analyser.getByteTimeDomainData(dataArray);
-                ctx.fillStyle = '#1e293b';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.lineWidth = 2;
-                ctx.strokeStyle = '#22c55e';
-                ctx.beginPath();
-                const sliceWidth = canvas.width / bufferLength;
-                let x = 0;
-                for (let i = 0; i < bufferLength; i++) {
-                    const v = dataArray[i] / 128.0;
-                    const y = v * canvas.height / 2;
-                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-                    x += sliceWidth;
-                }
-                ctx.lineTo(canvas.width, canvas.height / 2);
-                ctx.stroke();
-            };
-            draw();
+        // --- METRONOME LOGIC ---
+        let bpm = 120;
+        let isPlaying = false;
+        let nextBeatTime = 0;
+        let timerID;
+        let tapTimes = [];
+
+        const metroBtn = document.getElementById('metroToggle');
+        const flashBar = document.getElementById('flash-bar');
+        const bpmDisplay = document.getElementById('bpm-display');
+        const bpmInput = document.getElementById('bpm-input');
+        const wheel = document.getElementById('wheel');
+
+        function playClave(time) {
+            if (!document.getElementById('audioOn').checked) return;
+            const ctx = getAudioCtx();
+            const osc = ctx.createOscillator();
+            const env = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(2800, time);
+            env.gain.setValueAtTime(0.4, time);
+            env.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
+            osc.connect(env);
+            env.connect(ctx.destination);
+            osc.start(time);
+            osc.stop(time + 0.1);
         }
 
-        // 3. Recording Logic
-        recordBtn.onclick = async () => {
-            if (recorder?.state === 'recording') {
-                recorder.stop();
-                recordBtn.textContent = 'Start Recording';
-                recordBtn.classList.remove('recording');
-                canvas.style.display = 'none';
-                statusEl.textContent = 'Saving...';
-                cancelAnimationFrame(animationId);
-                return;
-            }
-
-            try {
-                if (!stream) {
-                    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        function scheduler() {
+            const ctx = getAudioCtx();
+            while (nextBeatTime < ctx.currentTime + 0.1) {
+                playClave(nextBeatTime);
+                if (document.getElementById('visualOn').checked) {
+                    const delay = (nextBeatTime - ctx.currentTime) * 1000;
+                    setTimeout(() => {
+                        flashBar.classList.add('active');
+                        setTimeout(() => flashBar.classList.remove('active'), 50);
+                    }, delay);
                 }
-                
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const source = audioContext.createMediaStreamSource(stream);
-                const analyser = audioContext.createAnalyser();
-                source.connect(analyser);
-                canvas.style.display = 'block';
-                drawLiveWave(analyser);
+                nextBeatTime += 60.0 / bpm;
+            }
+            timerID = setTimeout(scheduler, 25);
+        }
 
-                recorder = new MediaRecorder(stream);
-                chunks = [];
-                recorder.ondataavailable = (e) => chunks.push(e.data);
-                recorder.onstop = async () => {
-                    const blob = new Blob(chunks, { type: 'audio/webm' });
-                    const id = Date.now().toString();
-                    const name = new Date().toISOString().split('T')[0] + '-' + (await getCount() + 1);
-                    const tx = db.transaction('memos', 'readwrite');
-                    tx.objectStore('memos').put({ id, name, blob, ts: Date.now() });
-                    tx.oncomplete = () => {
-                        statusEl.textContent = '';
-                        render();
-                    };
-                };
+        metroBtn.onclick = () => {
+            getAudioCtx();
+            if (isPlaying) {
+                clearTimeout(timerID);
+                metroBtn.textContent = 'Start Metronome';
+                metroBtn.classList.remove('is-active');
+            } else {
+                nextBeatTime = getAudioCtx().currentTime + 0.05;
+                scheduler();
+                metroBtn.textContent = 'Stop Metronome';
+                metroBtn.classList.add('is-active');
+            }
+            isPlaying = !isPlaying;
+        };
 
-                recorder.start();
-                recordBtn.textContent = 'Stop Recording';
-                recordBtn.classList.add('recording');
-                statusEl.textContent = '⏺ Recording...';
-            } catch (err) {
-                console.error(err);
-                alert("Microphone access denied. Check browser permissions.");
+        // Tap Tempo Logic
+        document.getElementById('tapBtn').onclick = () => {
+            const now = performance.now();
+            tapTimes.push(now);
+            if (tapTimes.length > 4) tapTimes.shift();
+            if (tapTimes.length > 1) {
+                const diffs = [];
+                for(let i=1; i<tapTimes.length; i++) diffs.push(tapTimes[i] - tapTimes[i-1]);
+                const avg = diffs.reduce((a,b) => a+b) / diffs.length;
+                updateBPM(Math.round(60000 / avg));
             }
         };
 
-        async function getCount() {
-            return new Promise(res => {
-                db.transaction('memos').objectStore('memos').getAll().onsuccess = (e) => {
-                    const today = new Date().toISOString().split('T')[0];
-                    const count = e.target.result.filter(r => r.name.startsWith(today)).length;
-                    res(count);
-                };
-            });
+        // BPM Controls
+        const updateBPM = (val) => {
+            bpm = Math.min(Math.max(val, 40), 280);
+            bpmDisplay.textContent = bpm;
+            bpmInput.value = bpm;
+            wheel.style.transform = `rotate(${bpm * 2}deg)`;
+        };
+
+        bpmDisplay.onclick = () => {
+            bpmDisplay.style.display = 'none';
+            bpmInput.style.display = 'block';
+            bpmInput.focus();
+        };
+
+        bpmInput.onblur = () => {
+            updateBPM(parseInt(bpmInput.value) || 120);
+            bpmInput.style.display = 'none';
+            bpmDisplay.style.display = 'block';
+        };
+
+        bpmInput.onkeydown = (e) => { if(e.key === 'Enter') bpmInput.blur(); };
+
+        // Wheel Interaction
+        let dragging = false;
+        let lastAngle = 0;
+
+        wheel.onpointerdown = (e) => {
+            dragging = true;
+            wheel.setPointerCapture(e.pointerId);
+            const rect = wheel.getBoundingClientRect();
+            lastAngle = Math.atan2(e.clientY - (rect.top + rect.height/2), e.clientX - (rect.left + rect.width/2));
+        };
+
+        window.onpointermove = (e) => {
+            if (!dragging) return;
+            const rect = wheel.getBoundingClientRect();
+            const angle = Math.atan2(e.clientY - (rect.top + rect.height/2), e.clientX - (rect.left + rect.width/2));
+            let diff = (angle - lastAngle) * (180 / Math.PI);
+            if (Math.abs(diff) > 1.5) {
+                updateBPM(bpm + (diff > 0 ? 1 : -1));
+                lastAngle = angle;
+            }
+        };
+        window.onpointerup = () => dragging = false;
+
+        // --- RECORDER LOGIC ---
+        let micStream, recorder, chunks = [], animID;
+        const recordBtn = document.getElementById('recordToggle');
+        const canvas = document.getElementById('micVisualizer');
+        const ctx2d = canvas.getContext('2d');
+
+        function drawLive(analyser) {
+            const data = new Uint8Array(analyser.frequencyBinCount);
+            const loop = () => {
+                animID = requestAnimationFrame(loop);
+                analyser.getByteTimeDomainData(data);
+                ctx2d.fillStyle = '#1e293b';
+                ctx2d.fillRect(0, 0, canvas.width, canvas.height);
+                ctx2d.lineWidth = 2; ctx2d.strokeStyle = '#22c55e';
+                ctx2d.beginPath();
+                let x = 0, slice = canvas.width / data.length;
+                for (let i=0; i<data.length; i++) {
+                    let y = (data[i] / 128.0) * canvas.height / 2;
+                    if (i===0) ctx2d.moveTo(x,y); else ctx2d.lineTo(x,y);
+                    x += slice;
+                }
+                ctx2d.stroke();
+            };
+            loop();
         }
 
-        async function render() {
-            const list = document.getElementById('list');
-            list.innerHTML = '';
-            const tx = db.transaction('memos').objectStore('memos').getAll();
-            tx.onsuccess = (e) => {
-                const results = e.target.result.sort((a,b)=>b.ts-a.ts);
-                
-                if(results.length === 0) {
-                    list.innerHTML = '<p style="text-align:center; color:var(--text-muted)">No recordings yet.</p>';
-                    return;
-                }
+        recordBtn.onclick = async () => {
+            getAudioCtx();
+            if (recorder?.state === 'recording') {
+                recorder.stop();
+                recordBtn.textContent = 'Start Recording';
+                recordBtn.classList.remove('is-active');
+                canvas.style.display = 'none';
+                cancelAnimationFrame(animID);
+                return;
+            }
+            try {
+                if (!micStream) micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const source = getAudioCtx().createMediaStreamSource(micStream);
+                const analyser = getAudioCtx().createAnalyser();
+                source.connect(analyser);
+                canvas.style.display = 'block';
+                drawLive(analyser);
 
-                results.forEach(item => {
+                recorder = new MediaRecorder(micStream);
+                chunks = [];
+                recorder.ondataavailable = e => chunks.push(e.data);
+                recorder.onstop = async () => {
+                    const blob = new Blob(chunks, { type: 'audio/webm' });
+                    const id = Date.now().toString();
+                    const name = new Date().toISOString().split('T')[0] + '-' + Date.now().toString().slice(-4);
+                    const tx = db.transaction('memos', 'readwrite');
+                    tx.objectStore('memos').put({ id, name, blob, ts: Date.now() });
+                    tx.oncomplete = renderMemos;
+                };
+                recorder.start();
+                recordBtn.textContent = 'Stop Recording';
+                recordBtn.classList.add('is-active');
+            } catch (e) { alert("Mic required."); }
+        };
+
+        async function renderMemos() {
+            const listEl = document.getElementById('memoList');
+            listEl.innerHTML = '';
+            db.transaction('memos').objectStore('memos').getAll().onsuccess = (e) => {
+                e.target.result.sort((a,b) => b.ts - a.ts).forEach(item => {
+                    const url = URL.createObjectURL(item.blob);
                     const div = document.createElement('div');
                     div.className = 'recording-item';
-                    const url = URL.createObjectURL(item.blob);
-                    
                     div.innerHTML = `
-                        <strong style="font-size: 1.1rem;">${item.name}</strong>
-                        <div id="wave-${item.id}" class="wf-box"></div>
+                        <strong>${item.name}</strong>
+                        <div id="w-${item.id}" class="wf-box"></div>
                         <div class="controls">
-                            <button class="btn-sm" id="p-${item.id}">Play / Pause</button>
-                            <a href="${url}" download="${item.name}.webm" style="text-decoration:none">
-                                <button class="btn-sm">Export</button>
-                            </a>
-                            <button class="btn-sm btn-danger" onclick="deleteItem('${item.id}')">Delete</button>
+                            <button class="btn-sm" onclick="this.ws.playPause()">Play/Pause</button>
+                            <a href="${url}" download="${item.name}.webm"><button class="btn-sm secondary">Export</button></a>
+                            <button class="btn-sm btn-danger" onclick="deleteMemo('${item.id}')">Delete</button>
                         </div>
                     `;
-                    list.appendChild(div);
-
+                    listEl.appendChild(div);
                     const ws = WaveSurfer.create({
-                        container: `#wave-${item.id}`,
+                        container: `#w-${item.id}`,
                         waveColor: '#475569',
                         progressColor: '#22c55e',
                         barWidth: 3,
-                        barGap: 2,
-                        barRadius: 2,
-                        height: 100,
-                        url: url,
-                        cursorColor: '#22c55e',
-                        cursorWidth: 2
+                        url: url
                     });
-
-                    document.getElementById(`p-${item.id}`).onclick = (e) => {
-                        e.stopPropagation();
-                        ws.playPause();
-                    };
+                    div.querySelector('button').ws = ws;
                 });
             };
         }
 
-        window.deleteItem = (id) => {
-            if(confirm("Delete this recording?")) {
-                db.transaction('memos', 'readwrite').objectStore('memos').delete(id).oncomplete = render;
-            }
+        window.deleteMemo = (id) => {
+            if(confirm("Delete?")) db.transaction('memos', 'readwrite').objectStore('memos').delete(id).oncomplete = renderMemos;
         };
 
-        initDB().then(render);
+        // Boot
+        initDB().then(() => {
+            updateBPM(120);
+            renderMemos();
+        });
     </script>
 </body>
 </html>
