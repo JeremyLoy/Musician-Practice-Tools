@@ -116,11 +116,6 @@
         <input id="sess-name-inp" type="text" class="sess-name-inp" style="display:none;" placeholder="Session name…">
         <button id="sess-name-btn" class="sess-name-edit-btn" title="Edit name">✏️</button>
     </div>
-    <div class="session-name-row">
-        <span id="sess-name-lbl" class="sess-name-lbl" title="Click to rename">Session</span>
-        <input id="sess-name-inp" type="text" class="sess-name-inp" style="display:none;" placeholder="Session name…">
-        <button id="sess-name-btn" class="sess-name-edit-btn">✏️</button>
-    </div>
     <div class="session-meta">
         <div class="meta-item">Key<strong id="sess-key">A</strong></div>
         <div class="meta-item">BPM<strong id="sess-bpm">120</strong></div>
@@ -233,6 +228,7 @@
                     <button id="lightToggle" class="secondary metro-mode-btn" style="flex:1;">⚡ Light</button>
                 </div>
             </div>
+            <button id="metroStartBtn" class="main-action" style="width:100%;">▶ Start Metronome</button>
             <button id="tapBtn" class="secondary" style="width:100%;">👆 Tap Tempo</button>
         </div>
     </div>
@@ -471,14 +467,14 @@ const bpmInput   = document.getElementById('bpm-input');
 const metroCard  = document.getElementById('metro-card');
 const wheelEl    = document.getElementById('wheel');
 
-const updateBPM = v => {
+const updateBPMDisplay = v => {
     bpm = Math.min(Math.max(v,40),280);
     bpmDisplay.textContent = bpm;
     bpmInput.value = bpm;
     wheelEl.style.transform = `rotate(${bpm*1.5}deg)`;
     document.getElementById('sess-bpm').textContent = bpm;
-    savePrefs();
 };
+const updateBPM = v => { updateBPMDisplay(v); savePrefs(); };
 
 bpmDisplay.onclick = () => { bpmDisplay.style.display='none'; bpmInput.style.display='block'; bpmInput.focus(); };
 bpmInput.onblur   = () => { updateBPM(parseInt(bpmInput.value)||120); bpmInput.style.display='none'; bpmDisplay.style.display='block'; };
@@ -650,16 +646,24 @@ function sched() {
     schedTimer = setTimeout(sched, 25);
 }
 
+function updateMetroBtn() {
+    const btn=document.getElementById('metroStartBtn');
+    if(!btn) return;
+    if(metroRunning){ btn.textContent='■ Stop Metronome'; btn.classList.add('is-active'); }
+    else { btn.textContent='▶ Start Metronome'; btn.classList.remove('is-active'); }
+}
 function startMetro() {
     if(metroRunning) return;
     metroRunning=true; beatCount=0;
     nextBeat=getCtx().currentTime; sched();
+    updateMetroBtn();
 }
 function stopMetro() {
     if(!metroRunning) return;
     metroRunning=false; clearTimeout(schedTimer);
     wheelEl.classList.remove('beat-flash');
     metroCard.classList.remove('beat-flash');
+    updateMetroBtn();
 }
 function syncMetro() { (metroSound||metroLight)?startMetro():stopMetro(); savePrefs(); }
 
@@ -669,6 +673,17 @@ if(metroLight) document.getElementById('lightToggle').classList.add('is-active')
 
 document.getElementById('soundToggle').onclick = function() { metroSound=!metroSound; this.classList.toggle('is-active',metroSound); syncMetro(); };
 document.getElementById('lightToggle').onclick = function() { metroLight=!metroLight; this.classList.toggle('is-active',metroLight); syncMetro(); };
+document.getElementById('metroStartBtn').onclick = function() {
+    if(metroRunning) { stopMetro(); }
+    else {
+        if(!metroSound && !metroLight) {
+            metroSound=true;
+            document.getElementById('soundToggle').classList.add('is-active');
+        }
+        startMetro();
+    }
+    savePrefs();
+};
 
 // Tap tempo
 let tapTimes=[], tapResetTimer=null;
@@ -689,29 +704,40 @@ document.getElementById('tapBtn').onclick = () => {
 // Wheel drag
 (function(){
     const outer=wheelEl.parentElement;
-    let dragging=false, lastAngle=0;
+    let dragging=false, lastAngle=0, pendingDelta=0, rafId=null;
     const getAngle=e=>{
         const r=outer.getBoundingClientRect();
         const px=e.touches?e.touches[0].clientX:e.clientX;
         const py=e.touches?e.touches[0].clientY:e.clientY;
         return Math.atan2(py-(r.top+r.height/2), px-(r.left+r.width/2))*(180/Math.PI);
     };
-    wheelEl.addEventListener('mousedown',e=>{ e.preventDefault(); dragging=true; lastAngle=getAngle(e); wheelEl.style.cursor='grabbing'; });
-    window.addEventListener('mousemove',e=>{
+    const applyDelta=()=>{
+        rafId=null;
+        if(!pendingDelta) return;
+        updateBPMDisplay(bpm+Math.round(pendingDelta/3));
+        pendingDelta=0;
+    };
+    const onMove=e=>{
         if(!dragging)return;
-        let d=getAngle(e)-lastAngle; lastAngle=getAngle(e);
+        const angle=getAngle(e);
+        let d=angle-lastAngle; lastAngle=angle;
         if(d>180)d-=360; if(d<-180)d+=360;
-        updateBPM(bpm+Math.round(d/3));
-    });
-    window.addEventListener('mouseup',()=>{ dragging=false; wheelEl.style.cursor='grab'; });
-    wheelEl.addEventListener('touchstart',e=>{ e.preventDefault(); dragging=true; lastAngle=getAngle(e); },{passive:false});
-    window.addEventListener('touchmove',e=>{
-        if(!dragging)return; e.preventDefault();
-        let d=getAngle(e)-lastAngle; lastAngle=getAngle(e);
-        if(d>180)d-=360; if(d<-180)d+=360;
-        updateBPM(bpm+Math.round(d/3));
-    },{passive:false});
-    window.addEventListener('touchend',()=>{ dragging=false; });
+        pendingDelta+=d;
+        if(!rafId) rafId=requestAnimationFrame(applyDelta);
+    };
+    const onEnd=()=>{
+        if(!dragging)return;
+        dragging=false; wheelEl.style.cursor='grab';
+        if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
+        if(pendingDelta){ updateBPMDisplay(bpm+Math.round(pendingDelta/3)); pendingDelta=0; }
+        savePrefs();
+    };
+    wheelEl.addEventListener('mousedown',e=>{ e.preventDefault(); dragging=true; lastAngle=getAngle(e); pendingDelta=0; wheelEl.style.cursor='grabbing'; });
+    window.addEventListener('mousemove',onMove);
+    window.addEventListener('mouseup',onEnd);
+    wheelEl.addEventListener('touchstart',e=>{ e.preventDefault(); dragging=true; lastAngle=getAngle(e); pendingDelta=0; },{passive:false});
+    window.addEventListener('touchmove',e=>{ if(!dragging)return; e.preventDefault(); onMove(e); },{passive:false});
+    window.addEventListener('touchend',onEnd);
 })();
 
 // ─── SESSION ──────────────────────────────────────────────────
