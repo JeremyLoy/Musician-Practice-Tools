@@ -78,6 +78,9 @@
         .adj-btn:hover { border-color: var(--primary); color: var(--primary); }
         .adj-btn:active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
+        .wheel-row { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+        .wheel-and-adj { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+        .metro-start-btn { width: 200px; font-size: 1.4rem; line-height: 1.4; border-radius: 14px; padding: 0.9rem 0.5rem; text-align: center; }
         .metro-controls { display: flex; flex-direction: column; gap: 1rem; flex: 1; min-width: 205px; }
         .seg-ctrl { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
         .seg-ctrl button { flex: 1; background: transparent; color: var(--text-muted); border: none; border-right: 1px solid var(--border); padding: 12px 2px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: all 0.15s; touch-action: manipulation; min-height: 44px; }
@@ -114,8 +117,10 @@
             #bpm-display { font-size: 2.8rem; }
             .settings-bar { gap: 7px; padding: 0.75rem; }
             button.main-action, button.secondary { padding: 0.6rem 1rem; font-size: 0.85rem; }
-            .metro-controls { min-width: 160px; }
+            .metro-controls { min-width: unset; width: 100%; }
             .seg-ctrl button { font-size: 0.62rem; padding: 12px 2px; }
+            .wheel-row { flex-direction: row; align-items: flex-start; }
+            .metro-start-btn { width: auto; min-width: 72px; height: 170px; font-size: 1.6rem; align-self: stretch; padding: 0.5rem; order: -1; }
         }
     </style>
 </head>
@@ -206,18 +211,23 @@
     <h2>Metronome</h2>
     <div class="metro-layout">
         <div class="wheel-col">
-            <div class="wheel-outer">
-                <div class="bpm-container">
-                    <div id="bpm-display">120</div>
-                    <input type="number" id="bpm-input" min="40" max="280">
-                    <div id="bpm-label">BPM</div>
+            <div class="wheel-row">
+                <div class="wheel-and-adj">
+                    <div class="wheel-outer">
+                        <div class="bpm-container">
+                            <div id="bpm-display">120</div>
+                            <input type="number" id="bpm-input" min="40" max="280">
+                            <div id="bpm-label">BPM</div>
+                        </div>
+                        <div id="wheel"></div>
+                    </div>
+                    <div class="bpm-adj">
+                        <button class="adj-btn" id="bpmMinus">−</button>
+                        <span style="font-size:0.68rem;color:var(--text-muted);">fine adjust</span>
+                        <button class="adj-btn" id="bpmPlus">+</button>
+                    </div>
                 </div>
-                <div id="wheel"></div>
-            </div>
-            <div class="bpm-adj">
-                <button class="adj-btn" id="bpmMinus">−</button>
-                <span style="font-size:0.68rem;color:var(--text-muted);">fine adjust</span>
-                <button class="adj-btn" id="bpmPlus">+</button>
+                <button id="metroStartBtn" class="main-action metro-start-btn">▶<br>Start</button>
             </div>
         </div>
         <div class="metro-controls">
@@ -259,7 +269,6 @@
                     <button id="lightToggle" class="secondary metro-mode-btn" style="flex:1;">⚡ Light</button>
                 </div>
             </div>
-            <button id="metroStartBtn" class="main-action" style="width:100%;">▶ Start Metronome</button>
             <button id="tapBtn" class="secondary" style="width:100%;">👆 Tap Tempo</button>
         </div>
     </div>
@@ -701,8 +710,8 @@ function sched() {
 function updateMetroBtn() {
     const btn=document.getElementById('metroStartBtn');
     if(!btn) return;
-    if(metroRunning){ btn.textContent='■ Stop Metronome'; btn.classList.add('is-active'); }
-    else { btn.textContent='▶ Start Metronome'; btn.classList.remove('is-active'); }
+    if(metroRunning){ btn.innerHTML='■<br>Stop'; btn.classList.add('is-active'); }
+    else { btn.innerHTML='▶<br>Start'; btn.classList.remove('is-active'); }
 }
 function startMetro() {
     if(metroRunning) return;
