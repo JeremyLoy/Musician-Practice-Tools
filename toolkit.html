@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Musician's Toolkit</title>
+    <script src="https://unpkg.com/wavesurfer.js@7"></script>
+    <style>
+        :root {
+            --primary: #22c55e;
+            --danger: #ef4444;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --border: #334155;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        #micVisualizer {
+            width: 100%;
+            height: 100px;
+            background: #000;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            display: none;
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            position: relative;
+            z-index: 10; /* Ensure buttons are clickable above anything else */
+        }
+
+        button:hover { filter: brightness(1.1); }
+        button:active { transform: translateY(1px); }
+        button.recording { background: var(--danger); animation: pulse 1.5s infinite; }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+
+        .recording-item {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .wf-box { 
+            height: 100px; 
+            background: rgba(0,0,0,0.3); 
+            border-radius: 6px;
+            position: relative; /* Keeps children relative to this box */
+            overflow: hidden;   /* Stops the scrubber from bleeding out */
+            cursor: pointer;
+        }
+        
+        .controls { 
+            display: flex; 
+            gap: 10px; 
+            margin-top: 5px;
+            pointer-events: auto; /* Explicitly allow clicks */
+        }
+
+        .btn-sm { padding: 8px 16px; font-size: 14px; }
+        .btn-danger { background: var(--danger); }
+    </style>
+</head>
+<body>
+
+    <h1>Musician's Toolkit</h1>
+
+    <div class="card">
+        <canvas id="micVisualizer"></canvas>
+        <button id="recordBtn">Start Recording</button>
+        <div id="status" style="margin-top:10px; height: 20px; color: var(--primary)"></div>
+    </div>
+
+    <div id="list"></div>
+
+    <script>
+        let db, stream, recorder, chunks = [];
+        let animationId;
+        const canvas = document.getElementById('micVisualizer');
+        const ctx = canvas.getContext('2d');
+        const recordBtn = document.getElementById('recordBtn');
+        const statusEl = document.getElementById('status');
+
+        // 1. Initialize IndexedDB
+        const initDB = () => {
+            return new Promise((res) => {
+                const req = indexedDB.open('ToolkitDB', 1);
+                req.onupgradeneeded = (e) => e.target.result.createObjectStore('memos', {keyPath: 'id'});
+                req.onsuccess = (e) => { db = e.target.result; res(); };
+            });
+        };
+
+        // 2. Real-time Waveform Drawing (Canvas)
+        function drawLiveWave(analyser) {
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            
+            const draw = () => {
+                animationId = requestAnimationFrame(draw);
+                analyser.getByteTimeDomainData(dataArray);
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#22c55e';
+                ctx.beginPath();
+                const sliceWidth = canvas.width / bufferLength;
+                let x = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                    const v = dataArray[i] / 128.0;
+                    const y = v * canvas.height / 2;
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                    x += sliceWidth;
+                }
+                ctx.lineTo(canvas.width, canvas.height / 2);
+                ctx.stroke();
+            };
+            draw();
+        }
+
+        // 3. Recording Logic
+        recordBtn.onclick = async () => {
+            if (recorder?.state === 'recording') {
+                recorder.stop();
+                recordBtn.textContent = 'Start Recording';
+                recordBtn.classList.remove('recording');
+                canvas.style.display = 'none';
+                statusEl.textContent = 'Saving...';
+                cancelAnimationFrame(animationId);
+                return;
+            }
+
+            try {
+                if (!stream) {
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                }
+                
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(stream);
+                const analyser = audioContext.createAnalyser();
+                source.connect(analyser);
+                canvas.style.display = 'block';
+                drawLiveWave(analyser);
+
+                recorder = new MediaRecorder(stream);
+                chunks = [];
+                recorder.ondataavailable = (e) => chunks.push(e.data);
+                recorder.onstop = async () => {
+                    const blob = new Blob(chunks, { type: 'audio/webm' });
+                    const id = Date.now().toString();
+                    const name = new Date().toISOString().split('T')[0] + '-' + (await getCount() + 1);
+                    const tx = db.transaction('memos', 'readwrite');
+                    tx.objectStore('memos').put({ id, name, blob, ts: Date.now() });
+                    tx.oncomplete = () => {
+                        statusEl.textContent = '';
+                        render();
+                    };
+                };
+
+                recorder.start();
+                recordBtn.textContent = 'Stop Recording';
+                recordBtn.classList.add('recording');
+                statusEl.textContent = '⏺ Recording...';
+            } catch (err) {
+                console.error(err);
+                alert("Microphone access denied. Check browser permissions.");
+            }
+        };
+
+        async function getCount() {
+            return new Promise(res => {
+                db.transaction('memos').objectStore('memos').getAll().onsuccess = (e) => {
+                    const today = new Date().toISOString().split('T')[0];
+                    const count = e.target.result.filter(r => r.name.startsWith(today)).length;
+                    res(count);
+                };
+            });
+        }
+
+        async function render() {
+            const list = document.getElementById('list');
+            list.innerHTML = '';
+            const tx = db.transaction('memos').objectStore('memos').getAll();
+            tx.onsuccess = (e) => {
+                const results = e.target.result.sort((a,b)=>b.ts-a.ts);
+                
+                if(results.length === 0) {
+                    list.innerHTML = '<p style="text-align:center; color:var(--text-muted)">No recordings yet.</p>';
+                    return;
+                }
+
+                results.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'recording-item';
+                    const url = URL.createObjectURL(item.blob);
+                    
+                    div.innerHTML = `
+                        <strong style="font-size: 1.1rem;">${item.name}</strong>
+                        <div id="wave-${item.id}" class="wf-box"></div>
+                        <div class="controls">
+                            <button class="btn-sm" id="p-${item.id}">Play / Pause</button>
+                            <a href="${url}" download="${item.name}.webm" style="text-decoration:none">
+                                <button class="btn-sm">Export</button>
+                            </a>
+                            <button class="btn-sm btn-danger" onclick="deleteItem('${item.id}')">Delete</button>
+                        </div>
+                    `;
+                    list.appendChild(div);
+
+                    const ws = WaveSurfer.create({
+                        container: `#wave-${item.id}`,
+                        waveColor: '#475569',
+                        progressColor: '#22c55e',
+                        barWidth: 3,
+                        barGap: 2,
+                        barRadius: 2,
+                        height: 100,
+                        url: url,
+                        cursorColor: '#22c55e',
+                        cursorWidth: 2
+                    });
+
+                    document.getElementById(`p-${item.id}`).onclick = (e) => {
+                        e.stopPropagation();
+                        ws.playPause();
+                    };
+                });
+            };
+        }
+
+        window.deleteItem = (id) => {
+            if(confirm("Delete this recording?")) {
+                db.transaction('memos', 'readwrite').objectStore('memos').delete(id).oncomplete = render;
+            }
+        };
+
+        initDB().then(render);
+    </script>
+</body>
+</html>
