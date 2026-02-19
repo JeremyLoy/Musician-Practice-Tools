@@ -782,6 +782,19 @@ document.getElementById('sessionStop').onclick = () => {
 // ─── RECORDER ────────────────────────────────────────────────
 let recorder, chunks=[], liveAnimFrame=null, liveAnalyser=null;
 
+// ── Pick the best supported MIME type for this browser ──────────────────
+// iOS Safari only supports audio/mp4; Chrome/Firefox prefer audio/webm
+function getSupportedMimeType() {
+    const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus', ''];
+    return types.find(t => !t || MediaRecorder.isTypeSupported(t)) || '';
+}
+
+function mimeToExt(mime) {
+    if(mime.includes('mp4')) return 'mp4';
+    if(mime.includes('ogg')) return 'ogg';
+    return 'webm';
+}
+
 function drawLiveWaveform() {
     const canvas=document.getElementById('liveWaveform');
     const c2d=canvas.getContext('2d');
@@ -825,21 +838,27 @@ document.getElementById('recordToggle').onclick = async function() {
     }
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
     const autoName=getAutoName();
-    recorder=new MediaRecorder(stream); chunks=[];
-    recorder.ondataavailable=e=>chunks.push(e.data);
+    const mimeType=getSupportedMimeType();
+    const recOpts=mimeType ? {mimeType} : {};
+    recorder=new MediaRecorder(stream, recOpts); chunks=[];
+    recorder.ondataavailable=e=>{ if(e.data.size>0) chunks.push(e.data); };
     recorder.onstop=()=>{
         stream.getTracks().forEach(t=>t.stop());
-        const blob=new Blob(chunks,{type:'audio/webm'});
-        const item={id:Date.now().toString(), blob, ts:Date.now(), name:autoName};
+        const actualMime=recorder.mimeType||mimeType||'audio/webm';
+        const blob=new Blob(chunks,{type:actualMime});
+        const item={id:Date.now().toString(), blob, mimeType:actualMime, ts:Date.now(), name:autoName};
         const tx=db.transaction('memos','readwrite');
         tx.objectStore('memos').put(item);
         tx.oncomplete=renderMemos;
     };
-    liveAnalyser=getCtx().createAnalyser(); liveAnalyser.fftSize=2048;
-    getCtx().createMediaStreamSource(stream).connect(liveAnalyser);
+    // iOS: resume AudioContext before creating source (requires user gesture — we're inside one)
+    const ctx=getCtx();
+    liveAnalyser=ctx.createAnalyser(); liveAnalyser.fftSize=2048;
+    ctx.createMediaStreamSource(stream).connect(liveAnalyser);
     const canvas=document.getElementById('liveWaveform');
     canvas.style.display='block'; drawLiveWaveform();
-    recorder.start();
+    // timeslice=250ms ensures data flows on iOS (which may not fire ondataavailable without it)
+    recorder.start(250);
     this.textContent='⏹️ Stop Recording'; this.classList.add('is-active');
     document.getElementById('rec-status').textContent='● Recording...';
 };
@@ -854,7 +873,11 @@ function renderMemos() {
     const list=document.getElementById('memoList'); list.innerHTML='';
     db.transaction('memos').objectStore('memos').getAll().onsuccess=e=>{
         e.target.result.sort((a,b)=>b.ts-a.ts).forEach(m=>{
-            const url=URL.createObjectURL(m.blob);
+            const mime=m.mimeType||(m.blob&&m.blob.type)||'audio/webm';
+            const ext=mimeToExt(mime);
+            // Create a correctly-typed blob URL — critical for iOS to decode it
+            const typedBlob=new Blob([m.blob],{type:mime});
+            const url=URL.createObjectURL(typedBlob);
             const label=m.name||`Memo — ${new Date(m.ts).toLocaleString()}`;
             const d=document.createElement('div'); d.className='recording-item';
             d.innerHTML=`
@@ -872,16 +895,25 @@ function renderMemos() {
                 </div>`;
             list.appendChild(d);
 
-            const ws=WaveSurfer.create({container:`#w-${m.id}`,waveColor:'#475569',progressColor:'#22c55e',url});
+            // Use MediaElement backend: lets the browser's native <audio> handle decoding,
+            // which is the only reliable approach on iOS Safari for blob URLs.
+            const ws=WaveSurfer.create({
+                container:`#w-${m.id}`,
+                waveColor:'#475569',
+                progressColor:'#22c55e',
+                backend:'MediaElement',
+                url
+            });
             const pb=document.getElementById(`p-${m.id}`);
             ws.on('play',()=>pb.textContent='⏸ Pause');
             ws.on('pause',()=>pb.textContent='▶ Play');
             ws.on('finish',()=>pb.textContent='▶ Play');
+            // iOS: playPause must be triggered directly from user tap (already is via onclick)
             pb.onclick=()=>ws.playPause();
 
             document.getElementById(`dl-${m.id}`).onclick=()=>{
                 const a=document.createElement('a'); a.href=url;
-                a.download=`${(m.name||'memo').replace(/[^\w\s\-]/g,'_').trim()}.webm`;
+                a.download=`${(m.name||'memo').replace(/[^\w\s\-]/g,'_').trim()}.${ext}`;
                 a.click();
             };
 
