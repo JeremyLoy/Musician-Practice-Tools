@@ -18,56 +18,46 @@
             --text-muted: #94a3b8;
         }
 
-        body { font-family: system-ui, -apple-system, sans-serif; background-color: var(--bg); color: var(--text); max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.5; }
-        h1 { text-align: center; margin-bottom: 2rem; }
-        h2 { margin-top: 0; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 1rem; }
+        body { font-family: system-ui, -apple-system, sans-serif; background-color: var(--bg); color: var(--text); max-width: 850px; margin: 0 auto; padding: 2rem; line-height: 1.5; }
+        h1 { text-align: center; margin-bottom: 2rem; font-weight: 800; }
+        h2 { margin-top: 0; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 1.5rem; }
 
         .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4); }
         .drone-section { display: flex; flex-direction: column; gap: 1.5rem; }
-        .selector-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem; text-align: left; display: block; }
+        .selector-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem; font-weight: bold; }
         
         .root-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
-        .interval-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 8px; }
+        .interval-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(65px, 1fr)); gap: 8px; }
 
-        .btn-toggle { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 10px 5px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; }
+        .btn-toggle { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 10px 5px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
         .btn-toggle.active { background: var(--primary); border-color: var(--primary); color: white; }
 
-        .settings-bar { display: flex; flex-wrap: wrap; gap: 15px; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 10px; align-items: center; justify-content: center; }
-
+        .settings-bar { display: flex; flex-wrap: wrap; gap: 15px; padding: 1.2rem; background: rgba(0,0,0,0.3); border-radius: 12px; align-items: center; justify-content: center; border: 1px solid var(--border); }
         .control-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .switch-ui { display: flex; background: var(--bg); border-radius: 8px; padding: 4px; border: 1px solid var(--border); }
-        .switch-ui button { background: transparent; color: var(--text-muted); border: none; padding: 4px 10px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .switch-ui button { background: transparent; color: var(--text-muted); border: none; padding: 4px 10px; font-size: 0.7rem; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .switch-ui button.active { background: var(--primary); color: white; }
 
-        /* Debug Console */
-        #debug-console {
-            background: #000;
-            color: #22c55e;
-            font-family: monospace;
-            font-size: 0.75rem;
-            padding: 10px;
-            border-radius: 8px;
-            margin-top: 1rem;
-            min-height: 60px;
-            border: 1px solid var(--border);
-            white-space: pre-wrap;
-        }
+        #debug-console { background: #000; color: #22c55e; font-family: 'Courier New', monospace; font-size: 0.75rem; padding: 12px; border-radius: 8px; margin-top: 1rem; min-height: 80px; border: 1px solid #166534; white-space: pre-wrap; }
 
         #flash-bar { width: 100%; height: 12px; background: var(--border); border-radius: 6px; margin-bottom: 2rem; transition: background 0.05s ease-out; }
         #flash-bar.active { background: var(--primary); box-shadow: 0 0 20px var(--primary); }
 
         .wheel-outer { position: relative; width: 220px; height: 220px; margin: 0 auto; user-select: none; touch-action: none; }
-        #wheel { width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle, #1e293b 30%, #0f172a 100%); border: 12px solid var(--border); position: relative; cursor: grab; box-shadow: inset 0 0 30px rgba(0,0,0,0.7); }
+        #wheel { width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle, #1e293b 30%, #0f172a 100%); border: 12px solid var(--border); position: relative; cursor: grab; }
         #wheel::after { content: ''; position: absolute; top: 15px; left: 50%; transform: translateX(-50%); width: 14px; height: 14px; background: var(--primary); border-radius: 50%; }
 
-        .bpm-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 10; }
-        #bpm-display { font-size: 3.5rem; font-weight: 900; color: var(--text); cursor: pointer; line-height: 1; }
-        
-        button.main-action { background: var(--primary); color: white; border: none; padding: 0.8rem 1.8rem; border-radius: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s; font-size: 1rem; }
+        .bpm-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; width: 140px; pointer-events: none; }
+        #bpm-display { font-size: 3.5rem; font-weight: 900; color: var(--text); cursor: pointer; line-height: 1; pointer-events: auto; }
+        #bpm-input { width: 100%; background: transparent; border: none; color: var(--primary); font-size: 3.5rem; font-weight: 900; text-align: center; display: none; outline: none; pointer-events: auto; }
+
+        .recording-item { background: var(--surface); border: 1px solid var(--border); padding: 1.5rem; margin-bottom: 1.5rem; border-radius: 16px; }
+        .wf-box { height: 100px; background: rgba(0,0,0,0.5); border-radius: 8px; margin: 15px 0; overflow: hidden; }
+
+        button.main-action { background: var(--primary); color: white; border: none; padding: 0.8rem 1.8rem; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 1rem; }
         button.main-action.is-active { background: var(--danger); }
-        
-        .recording-item { background: var(--surface); border: 1px solid var(--border); padding: 1rem; margin-bottom: 1rem; border-radius: 12px; }
-        .wf-box { height: 80px; margin: 10px 0; background: rgba(0,0,0,0.3); border-radius: 4px; }
+        button.secondary { background: var(--border); color: var(--text); padding: 0.8rem 1.8rem; border-radius: 10px; font-weight: bold; cursor: pointer; border: none; }
+        .num-input { background: var(--bg); border: 1px solid var(--border); color: var(--primary); padding: 5px; border-radius: 4px; width: 50px; text-align: center; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -81,46 +71,18 @@
                 <span class="selector-label">1. Root Note</span>
                 <div class="root-grid" id="rootGrid"></div>
             </div>
-
             <div>
                 <span class="selector-label">2. Chord Intervals</span>
                 <div class="interval-grid" id="intervalGrid"></div>
             </div>
-
             <div class="settings-bar">
-                <div class="control-group">
-                    <span class="selector-label">A Ref</span>
-                    <input type="number" id="droneRef" value="440" style="width:50px; background:var(--bg); border:1px solid var(--border); color:var(--primary); text-align:center; border-radius:4px;">
-                </div>
-
-                <div class="control-group">
-                    <span class="selector-label">Octave</span>
-                    <input type="number" id="droneOctave" value="3" min="1" max="6" style="width:40px; background:var(--bg); border:1px solid var(--border); color:var(--primary); text-align:center; border-radius:4px;">
-                </div>
-
-                <div class="control-group">
-                    <span class="selector-label">Tuning</span>
-                    <div class="switch-ui" id="tuningSwitch">
-                        <button data-val="just" class="active">JUST</button>
-                        <button data-val="equal">ET</button>
-                    </div>
-                </div>
-
-                <div class="control-group">
-                    <span class="selector-label">Waveform</span>
-                    <div class="switch-ui" id="colorSwitch">
-                        <button data-val="sine" class="active">SINE</button>
-                        <button data-val="triangle">TRI</button>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 8px;">
-                    <button id="droneToggle" class="main-action">Start</button>
-                    <button id="droneClear" class="btn-toggle" style="padding: 0.8rem 1rem;">Clear</button>
-                </div>
+                <div class="control-group"><span class="selector-label">A Ref</span><input type="number" id="droneRef" value="440" class="num-input"></div>
+                <div class="control-group"><span class="selector-label">Octave</span><input type="number" id="droneOctave" value="4" min="1" max="6" class="num-input"></div>
+                <div class="control-group"><span class="selector-label">Tuning</span><div class="switch-ui" id="tuningSwitch"><button data-val="just" class="active">JUST</button><button data-val="equal">ET</button></div></div>
+                <div class="control-group"><span class="selector-label">Waveform</span><div class="switch-ui" id="colorSwitch"><button data-val="sine" class="active">SINE</button><button data-val="triangle">TRI</button></div></div>
+                <div style="display: flex; gap: 10px;"><button id="droneToggle" class="main-action">Start Drone</button><button id="droneClear" class="secondary">Clear</button></div>
             </div>
-
-            <div id="debug-console">Debug: Select notes to see calculations...</div>
+            <div id="debug-console">Debug: Select notes...</div>
         </div>
     </div>
 
@@ -130,170 +92,156 @@
         <div class="wheel-outer">
             <div class="bpm-container">
                 <div id="bpm-display">120</div>
-                <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: bold;">BPM</div>
+                <input type="number" id="bpm-input" min="40" max="280">
             </div>
             <div id="wheel"></div>
         </div>
-        <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: center;">
+        <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
             <button id="metroToggle" class="main-action">Start</button>
-            <button id="tapBtn" class="btn-toggle" style="padding: 0.8rem 1rem;">Tap</button>
+            <button id="tapBtn" class="secondary">Tap</button>
         </div>
+    </div>
+
+    <div class="card">
+        <h2>Audio Memos</h2>
+        <div style="text-align:center;"><button id="recordToggle" class="main-action">Start Recording</button></div>
+        <div id="status" style="margin-top:1rem; height: 20px; color: var(--primary); font-weight: bold; font-size: 0.8rem; text-align: center;"></div>
     </div>
 
     <div id="memoList"></div>
 
     <script>
-        let audioCtx;
-        function getCtx() { 
-            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if(audioCtx.state === 'suspended') audioCtx.resume();
-            return audioCtx; 
-        }
+        let audioCtx, db;
+        const getCtx = () => { if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); if(audioCtx.state === 'suspended') audioCtx.resume(); return audioCtx; };
 
-        // --- DRONE CORE ---
-        const notes = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
-        const ratios = [
-            {n:"Uni", s:0, r:1/1},   {n:"m2", s:1, r:16/15}, {n:"M2", s:2, r:9/8}, 
-            {n:"m3", s:3, r:6/5},   {n:"M3", s:4, r:5/4},   {n:"P4", s:5, r:4/3}, 
-            {n:"TT", s:6, r:45/32}, {n:"P5", s:7, r:3/2},   {n:"m6", s:8, r:8/5}, 
-            {n:"M6", s:9, r:5/3},   {n:"m7", s:10, r:9/5},  {n:"M7", s:11, r:15/8}, {n:"Oct", s:12, r:2/1}
+        const initDB = () => {
+            return new Promise((res) => {
+                const req = indexedDB.open('Toolkit_V11', 1);
+                req.onupgradeneeded = (e) => { e.target.result.createObjectStore('memos', { keyPath: 'id' }); };
+                req.onsuccess = (e) => { db = e.target.result; res(); };
+            });
+        };
+
+        // --- DRONE ---
+        const noteNames = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+        const droneRatios = [
+            {n:"Uni", s:0, r:1/1, f:"1/1"},   {n:"m2", s:1, r:16/15, f:"16/15"}, {n:"M2", s:2, r:9/8, f:"9/8"}, 
+            {n:"m3", s:3, r:6/5, f:"6/5"},     {n:"M3", s:4, r:5/4, f:"5/4"},     {n:"P4", s:5, r:4/3, f:"4/3"}, 
+            {n:"TT", s:6, r:7/5, f:"7/5"},     {n:"P5", s:7, r:3/2, f:"3/2"},     {n:"m6", s:8, r:8/5, f:"8/5"}, 
+            {n:"M6", s:9, r:5/3, f:"5/3"},     {n:"m7", s:10, r:16/9, f:"16/9"},  {n:"M7", s:11, r:15/8, f:"15/8"}, {n:"Oct", s:12, r:2/1, f:"2/1"}
         ];
 
-        let state = { root: 0, intervals: new Set([0]), tuning: 'just', color: 'sine', running: false, octave: 3 };
-        let activeNodes = [];
-        const debugBox = document.getElementById('debug-console');
+        // START IN A (index 9), OCTAVE 4
+        let droneState = { root: 9, intervals: new Set([0]), tuning: 'just', color: 'sine', running: false, octave: 4 };
+        let activeOscs = [];
 
-        // UI Setup
-        notes.forEach((n, i) => {
-            const b = document.createElement('button'); b.className = 'btn-toggle'; b.textContent = n;
-            if(i===0) b.classList.add('active');
-            b.onclick = () => { 
-                document.querySelectorAll('#rootGrid .btn-toggle').forEach(el=>el.classList.remove('active')); 
-                b.classList.add('active'); state.root = i; sync(); 
-            };
-            document.getElementById('rootGrid').appendChild(b);
-        });
-
-        ratios.forEach(rt => {
-            const b = document.createElement('button'); b.className = 'btn-toggle'; b.textContent = rt.n;
-            if(rt.s===0) b.classList.add('active');
-            b.onclick = () => { 
-                if(state.intervals.has(rt.s) && state.intervals.size > 1) { state.intervals.delete(rt.s); b.classList.remove('active'); }
-                else { state.intervals.add(rt.s); b.classList.add('active'); }
-                sync();
-            };
-            document.getElementById('intervalGrid').appendChild(b);
-        });
-
-        document.getElementById('droneOctave').onchange = (e) => { state.octave = parseInt(e.target.value); sync(); };
-        document.getElementById('droneRef').onchange = () => sync();
-
-        function setupSwitch(id, key) {
-            document.getElementById(id).onclick = (e) => {
-                if(e.target.tagName !== 'BUTTON') return;
-                document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.remove('active'));
-                e.target.classList.add('active');
-                state[key] = e.target.dataset.val;
-                sync();
-            };
-        }
-        setupSwitch('tuningSwitch', 'tuning');
-        setupSwitch('colorSwitch', 'color');
-
-        function sync() { updateDebug(); if(state.running) { stopDrone(); startDrone(); } }
-
-        function updateDebug() {
+        function updateDroneDebug() {
             const refA = parseFloat(document.getElementById('droneRef').value) || 440;
-            // Root Frequency calculation based on A4-relative distance
-            const rootFreq = (refA * Math.pow(2, (state.root - 9) / 12)) * Math.pow(2, state.octave - 4);
+            const rootFreq = (refA * Math.pow(2, (droneState.root - 9) / 12)) * Math.pow(2, droneState.octave - 4);
+            let txt = `ROOT: ${noteNames[droneState.root]} @ ${rootFreq.toFixed(2)}Hz\nMODE: ${droneState.tuning.toUpperCase()}\n\n`;
             
-            let debugText = `Root: ${notes[state.root]} (Octave ${state.octave}) @ ${rootFreq.toFixed(2)}Hz\n`;
-            debugText += `Tuning: ${state.tuning.toUpperCase()} | Waveform: ${state.color.toUpperCase()}\n`;
-            debugText += `Active Chord:\n`;
-
-            state.intervals.forEach(s => {
-                const interval = ratios.find(r=>r.s===s);
-                let f;
-                if(state.tuning === 'equal') {
-                    f = rootFreq * Math.pow(2, s/12);
-                    debugText += ` - ${interval.n}: ${f.toFixed(2)}Hz (Ratio: 2^(${s}/12))\n`;
-                } else {
-                    f = rootFreq * interval.r;
-                    debugText += ` - ${interval.n}: ${f.toFixed(2)}Hz (Ratio: ${interval.r.toFixed(3)})\n`;
-                }
+            // SORT ASCENDING
+            Array.from(droneState.intervals).sort((a,b)=>a-b).forEach(s => {
+                const interval = droneRatios.find(r=>r.s===s);
+                const freq = (droneState.tuning === 'equal') ? rootFreq * Math.pow(2, s/12) : rootFreq * interval.r;
+                const ratioText = (droneState.tuning === 'equal') ? `2^(${s}/12)` : `${interval.f} (${interval.r.toFixed(3)})`;
+                txt += `${interval.n.padEnd(4)}: ${freq.toFixed(2)}Hz | Ratio: ${ratioText}\n`;
             });
-            debugBox.innerText = debugText;
+            document.getElementById('debug-console').innerText = txt;
         }
 
         function startDrone() {
             const ctx = getCtx();
             const refA = parseFloat(document.getElementById('droneRef').value) || 440;
-            const rootFreq = (refA * Math.pow(2, (state.root - 9) / 12)) * Math.pow(2, state.octave - 4);
-
-            state.intervals.forEach(s => {
-                let f;
-                if(state.tuning === 'equal') { f = rootFreq * Math.pow(2, s/12); }
-                else { f = rootFreq * ratios.find(r=>r.s===s).r; }
-
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
-                osc.type = state.color;
-                osc.frequency.setValueAtTime(f, ctx.currentTime);
-                gain.gain.setValueAtTime(0, ctx.currentTime);
-                gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.1);
-                
-                osc.connect(gain).connect(ctx.destination);
-                osc.start();
-                activeNodes.push({osc, gain});
+            const rootFreq = (refA * Math.pow(2, (droneState.root - 9) / 12)) * Math.pow(2, droneState.octave - 4);
+            droneState.intervals.forEach(s => {
+                const interval = droneRatios.find(r=>r.s===s);
+                const f = (droneState.tuning === 'equal') ? rootFreq * Math.pow(2, s/12) : rootFreq * interval.r;
+                const osc = ctx.createOscillator(); const g = ctx.createGain();
+                osc.type = droneState.color; osc.frequency.setValueAtTime(f, ctx.currentTime);
+                g.gain.setValueAtTime(0, ctx.currentTime); g.gain.linearRampToValueAtTime(0.1, ctx.currentTime + 0.1);
+                osc.connect(g).connect(ctx.destination); osc.start(); activeOscs.push({osc, g});
             });
         }
 
-        function stopDrone() {
-            activeNodes.forEach(n => {
-                n.gain.gain.cancelScheduledValues(audioCtx.currentTime);
-                n.gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
-                setTimeout(() => {
-                    try { n.osc.stop(); } catch(e) {}
-                    n.osc.disconnect();
-                }, 150);
-            });
-            activeNodes = [];
-        }
+        const stopDrone = () => { activeOscs.forEach(n => { n.g.gain.linearRampToValueAtTime(0, getCtx().currentTime + 0.1); setTimeout(()=> { try { n.osc.stop(); } catch(e){} }, 150); }); activeOscs = []; };
+        const droneSync = () => { updateDroneDebug(); if(droneState.running) { stopDrone(); startDrone(); } };
 
-        document.getElementById('droneToggle').onclick = function() {
-            state.running = !state.running;
-            if(state.running) { startDrone(); this.textContent = "Stop"; this.classList.add('is-active'); }
-            else { stopDrone(); this.textContent = "Start"; this.classList.remove('is-active'); }
-        };
+        noteNames.forEach((n, i) => { 
+            const b = document.createElement('button'); b.className = 'btn-toggle'; b.textContent = n; 
+            if(i===9) b.classList.add('active'); // DEFAULT A
+            b.onclick = () => { document.querySelectorAll('#rootGrid .btn-toggle').forEach(x=>x.classList.remove('active')); b.classList.add('active'); droneState.root = i; droneSync(); }; 
+            document.getElementById('rootGrid').appendChild(b); 
+        });
+        
+        droneRatios.forEach(rt => { 
+            const b = document.createElement('button'); b.className = 'btn-toggle'; b.textContent = rt.n; if(rt.s===0) b.classList.add('active'); 
+            b.onclick = () => { if(droneState.intervals.has(rt.s) && droneState.intervals.size > 1) { droneState.intervals.delete(rt.s); b.classList.remove('active'); } else { droneState.intervals.add(rt.s); b.classList.add('active'); } droneSync(); }; 
+            document.getElementById('intervalGrid').appendChild(b); 
+        });
 
-        document.getElementById('droneClear').onclick = () => {
-            state.intervals = new Set([0]);
-            document.querySelectorAll('#intervalGrid .btn-toggle').forEach(b => b.classList.toggle('active', b.textContent === 'Uni'));
-            sync();
-        };
+        document.getElementById('droneToggle').onclick = function() { droneState.running = !droneState.running; if(droneState.running) { startDrone(); this.textContent="Stop"; this.classList.add('is-active'); } else { stopDrone(); this.textContent="Start"; this.classList.remove('is-active'); } };
+        
+        document.getElementById('droneOctave').onchange = (e) => { droneState.octave = parseInt(e.target.value); droneSync(); };
+        document.getElementById('droneRef').onchange = (e) => { droneSync(); };
+
+        ['tuningSwitch', 'colorSwitch'].forEach(id => document.getElementById(id).onclick = (e) => { if(e.target.tagName==='BUTTON') { document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.remove('active')); e.target.classList.add('active'); droneState[id==='tuningSwitch'?'tuning':'color'] = e.target.dataset.val; droneSync(); } });
 
         // --- METRONOME ---
-        let bpm = 120, metroRunning = false, nextTime = 0, timer;
-        const wheel = document.getElementById('wheel'), display = document.getElementById('bpm-display');
+        let bpm = 120, metroRunning = false, nextBeat = 0, timer;
+        const bpmDisplay = document.getElementById('bpm-display'), bpmInput = document.getElementById('bpm-input');
+        const updateBPM = (v) => { bpm = Math.min(Math.max(v, 40), 280); bpmDisplay.textContent = bpm; bpmInput.value = bpm; document.getElementById('wheel').style.transform = `rotate(${bpm*1.5}deg)`; };
+        bpmDisplay.onclick = () => { bpmDisplay.style.display = 'none'; bpmInput.style.display = 'block'; bpmInput.focus(); };
+        bpmInput.onblur = () => { updateBPM(parseInt(bpmInput.value) || 120); bpmInput.style.display = 'none'; bpmDisplay.style.display = 'block'; };
+        bpmInput.onkeydown = (e) => { if(e.key === 'Enter') bpmInput.blur(); };
 
-        function sched() {
-            while(nextTime < audioCtx.currentTime + 0.1) {
-                const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
-                osc.frequency.value = 1000; g.gain.exponentialRampToValueAtTime(0.001, nextTime + 0.1);
-                osc.connect(g).connect(audioCtx.destination); osc.start(nextTime); osc.stop(nextTime + 0.1);
-                nextTime += 60/bpm;
-            }
-            timer = setTimeout(sched, 25);
+        function sched() { 
+            while(nextBeat < getCtx().currentTime + 0.1) { 
+                const o = getCtx().createOscillator(); const g = getCtx().createGain(); 
+                o.frequency.value = 1000; g.gain.setValueAtTime(0.3, nextBeat); g.gain.exponentialRampToValueAtTime(0.001, nextBeat+0.05); 
+                o.connect(g).connect(getCtx().destination); o.start(nextBeat); o.stop(nextBeat+0.1); 
+                nextBeat += 60/bpm; 
+            } 
+            timer = setTimeout(sched, 25); 
         }
 
-        document.getElementById('metroToggle').onclick = function() {
-            getCtx(); metroRunning = !metroRunning;
-            if(metroRunning) { nextTime = audioCtx.currentTime; sched(); this.textContent="Stop"; this.classList.add('is-active'); }
-            else { clearTimeout(timer); this.textContent="Start"; this.classList.remove('is-active'); }
+        document.getElementById('metroToggle').onclick = function() { 
+            metroRunning = !metroRunning; 
+            if(metroRunning) { nextBeat = getCtx().currentTime; sched(); this.textContent = "Stop"; this.classList.add('is-active'); } 
+            else { clearTimeout(timer); this.textContent = "Start"; this.classList.remove('is-active'); } 
         };
 
-        // Initialize Debug
-        updateDebug();
+        // --- RECORDER ---
+        let recorder, chunks = [], waveRegistry = {};
+        document.getElementById('recordToggle').onclick = async function() {
+            if(recorder?.state === 'recording') { recorder.stop(); this.textContent = "Start Recording"; this.classList.remove('is-active'); return; }
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            recorder = new MediaRecorder(stream); chunks = [];
+            recorder.ondataavailable = e => chunks.push(e.data);
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: 'audio/webm' });
+                const item = { id: Date.now().toString(), blob, ts: Date.now() };
+                db.transaction('memos', 'readwrite').objectStore('memos').put(item).oncomplete = renderMemos;
+            };
+            recorder.start(); this.textContent = "Stop Recording"; this.classList.add('is-active');
+        };
+
+        function renderMemos() {
+            const list = document.getElementById('memoList'); list.innerHTML = '';
+            db.transaction('memos').objectStore('memos').getAll().onsuccess = (e) => {
+                e.target.result.sort((a,b)=>b.ts-a.ts).forEach(m => {
+                    const url = URL.createObjectURL(m.blob), d = document.createElement('div');
+                    d.className = 'recording-item';
+                    d.innerHTML = `<strong>Memo ${new Date(m.ts).toLocaleTimeString()}</strong><div id="w-${m.id}" class="wf-box"></div><button class="main-action" id="p-${m.id}">Play</button> <button class="secondary" onclick="deleteMemo('${m.id}')">Delete</button>`;
+                    list.appendChild(d);
+                    const ws = WaveSurfer.create({ container: `#w-${m.id}`, waveColor: '#475569', progressColor: '#22c55e', url: url });
+                    document.getElementById(`p-${m.id}`).onclick = () => ws.playPause();
+                });
+            };
+        }
+        window.deleteMemo = (id) => { if(confirm("Delete?")) db.transaction('memos', 'readwrite').objectStore('memos').delete(id).oncomplete = renderMemos; };
+
+        initDB().then(() => { droneSync(); updateBPM(120); renderMemos(); });
     </script>
 </body>
 </html>
