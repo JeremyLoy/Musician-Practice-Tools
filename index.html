@@ -812,8 +812,10 @@ function stopLiveWaveform() {
 }
 
 function getAutoName() {
-    const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-    return `${noteNames[droneState.root]} ${getIntervalLabel()} — ${t}`;
+    const now=new Date();
+    const d=now.toLocaleDateString([],{month:'short',day:'numeric'});
+    const t=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+    return `${d} ${t}`;
 }
 
 document.getElementById('recordToggle').onclick = async function() {
