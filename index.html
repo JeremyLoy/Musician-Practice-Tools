@@ -23,18 +23,6 @@
         .card { background: var(--surface); border: 2px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4); transition: border-color 0.06s ease-out, box-shadow 0.06s ease-out; }
         .card.beat-flash { border-color: var(--primary) !important; box-shadow: 0 0 0 4px rgba(34,197,94,0.28), 0 10px 25px -5px rgba(0,0,0,0.4) !important; }
 
-        /* SESSION */
-        .session-card { background: linear-gradient(135deg,#142618 0%,var(--surface) 100%); border-color: #2a5a38; }
-        .sess-name-lbl { font-size: 1.4rem; font-weight: 800; color: var(--text); cursor: text; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .sess-name-inp { flex: 1; background: var(--bg); border: 1px solid var(--primary); color: var(--text); border-radius: 8px; padding: 4px 10px; font-size: 1.4rem; font-weight: 800; outline: none; min-width: 0; }
-        .sess-name-edit-btn { background: none; border: none; cursor: pointer; font-size: 1rem; padding: 10px; flex-shrink: 0; opacity: 0.5; transition: opacity 0.15s; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; touch-action: manipulation; }
-        .sess-name-edit-btn:hover { opacity: 1; }
-        .sess-name-edit-btn:active { opacity: 1; }
-        .session-name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 0.75rem; }
-        .session-meta { display: flex; flex-wrap: wrap; gap: 0.75rem 2rem; align-items: baseline; margin-bottom: 1rem; }
-        .meta-item { color: var(--text-muted); font-size: 0.85rem; }
-        .meta-item strong { color: var(--primary); font-size: 1.15rem; margin-left: 4px; }
-        .session-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
         /* DRONE */
         .drone-section { display: flex; flex-direction: column; gap: 1.2rem; }
@@ -131,24 +119,6 @@
 
 <h1>🎵 Musician's Practice Toolkit</h1>
 
-<!-- SESSION -->
-<div class="card session-card">
-    <h2>Session</h2>
-    <div class="session-name-row">
-        <span id="sess-name-lbl" class="sess-name-lbl" title="Click to rename">Session</span>
-        <input id="sess-name-inp" type="text" class="sess-name-inp" style="display:none;" placeholder="Session name…">
-        <button id="sess-name-btn" class="sess-name-edit-btn" title="Edit name">✏️</button>
-    </div>
-    <div class="session-meta">
-        <div class="meta-item">Key<strong id="sess-key">A</strong></div>
-        <div class="meta-item">BPM<strong id="sess-bpm">120</strong></div>
-        <div class="meta-item" id="sess-chord" style="font-size:0.82rem;"></div>
-    </div>
-    <div class="session-actions">
-        <button class="main-action" id="sessionStart">🚀 Start Session</button>
-        <button class="secondary" id="sessionStop">🛑 Stop All</button>
-    </div>
-</div>
 
 <!-- DRONE -->
 <div class="card">
@@ -307,7 +277,7 @@ function savePrefs() {
     try {
         localStorage.setItem(PREFS_KEY, JSON.stringify({
             bpm, timeSig, subdivision, metroSound, metroLight,
-            metroVolume, clickSound, sessionName,
+            metroVolume, clickSound,
             droneRoot: droneState.root,
             droneIntervals: [...droneState.intervals],
             droneTuning: droneState.tuning,
@@ -377,7 +347,6 @@ function updateDroneDebug() {
         txt += `${iv.n.padEnd(4)}: ${freq.toFixed(2)}Hz | ${ratio}\n`;
     });
     document.getElementById('debug-console').innerText = txt;
-    updateSessionDisplay();
     savePrefs();
 }
 
@@ -538,7 +507,6 @@ const updateBPMDisplay = v => {
     bpmDisplay.textContent = bpm;
     bpmInput.value = bpm;
     wheelEl.style.transform = `rotate(${bpm*1.5}deg)`;
-    document.getElementById('sess-bpm').textContent = bpm;
 };
 const updateBPM = v => { updateBPMDisplay(v); savePrefs(); };
 
@@ -798,71 +766,6 @@ document.getElementById('tapBtn').onclick = () => {
     window.addEventListener('touchend',onEnd);
 })();
 
-// ─── SESSION ──────────────────────────────────────────────────
-let sessionName = prefs.sessionName ?? (() => {
-    return new Date().toLocaleDateString([], {weekday:'long', month:'long', day:'numeric'});
-})();
-
-function updateSessionDisplay() {
-    document.getElementById('sess-key').textContent   = noteNames[droneState.root];
-    document.getElementById('sess-bpm').textContent   = bpm;
-    document.getElementById('sess-chord').textContent = getIntervalLabel();
-}
-
-// Session name rename logic
-(function() {
-    const lbl = document.getElementById('sess-name-lbl');
-    const inp = document.getElementById('sess-name-inp');
-    const btn = document.getElementById('sess-name-btn');
-    lbl.textContent = sessionName;
-
-    let editing = false;
-    function enterEdit() {
-        editing=true; inp.value=lbl.textContent;
-        lbl.style.display='none'; inp.style.display='block';
-        btn.textContent='✓'; inp.focus(); inp.select();
-    }
-    function commitEdit() {
-        if(!editing) return; editing=false;
-        const n = inp.value.trim() || lbl.textContent;
-        sessionName = n; lbl.textContent = n;
-        lbl.style.display=''; inp.style.display='none'; btn.textContent='✏️';
-        savePrefs();
-    }
-    btn.onclick = () => editing ? commitEdit() : enterEdit();
-    lbl.onclick = enterEdit;
-    inp.onblur  = () => setTimeout(commitEdit, 80);
-    inp.onkeydown = e => {
-        if(e.key==='Enter') commitEdit();
-        if(e.key==='Escape') { editing=false; inp.style.display='none'; lbl.style.display=''; btn.textContent='✏️'; }
-    };
-})();
-
-document.getElementById('sessionStart').onclick = () => {
-    if(!droneState.running) {
-        droneState.running=true; startDrone();
-        const dt=document.getElementById('droneToggle');
-        dt.textContent='🎵 Stop Drone'; dt.classList.add('is-active');
-    }
-    if(!metroSound) {
-        metroSound=true;
-        document.getElementById('soundToggle').classList.add('is-active');
-    }
-    syncMetro();
-};
-
-document.getElementById('sessionStop').onclick = () => {
-    if(droneState.running) {
-        droneState.running=false; stopDrone();
-        const dt=document.getElementById('droneToggle');
-        dt.textContent='🎵 Start Drone'; dt.classList.remove('is-active');
-    }
-    metroSound=false; metroLight=false;
-    document.getElementById('soundToggle').classList.remove('is-active');
-    document.getElementById('lightToggle').classList.remove('is-active');
-    stopMetro(); savePrefs();
-};
-
 // ─── RECORDER ────────────────────────────────────────────────
 let recorder, chunks=[], liveAnimFrame=null, liveAnalyser=null;
 
@@ -1037,9 +940,7 @@ window.deleteMemo = id => {
 initDB().then(()=>{
     updateBPM(bpm);
     droneSync();
-    updateSessionDisplay();
     renderMemos();
-    if(metroSound||metroLight) syncMetro();
 });
 </script>
 </body>
