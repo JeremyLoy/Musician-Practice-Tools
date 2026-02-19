@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Musician's Practice Toolkit</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <script src="https://unpkg.com/wavesurfer.js@7"></script>
     <style>
         :root {
@@ -56,7 +60,7 @@
         .wheel-outer { position: relative; width: 200px; height: 200px; user-select: none; touch-action: none; }
         #wheel { width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle,#1e293b 30%,#0f172a 100%); border: 12px solid var(--border); cursor: grab; transition: border-color 0.06s, box-shadow 0.06s; }
         #wheel.beat-flash { border-color: var(--primary); box-shadow: 0 0 22px rgba(34,197,94,0.5); }
-        #wheel::after { content:''; position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 12px; height: 12px; background: var(--primary); border-radius: 50%; }
+        #wheel::after { content:''; position: absolute; top: 6px; left: 50%; transform: translateX(-50%); width: 22px; height: 22px; background: var(--primary); border-radius: 50%; box-shadow: 0 0 8px rgba(34,197,94,0.7); }
         .bpm-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; width: 130px; pointer-events: none; z-index: 2; }
         #bpm-display { font-size: 3.2rem; font-weight: 900; color: var(--text); cursor: pointer; line-height: 1; pointer-events: auto; }
         #bpm-input { width: 100%; background: transparent; border: none; color: var(--primary); font-size: 3.2rem; font-weight: 900; text-align: center; display: none; outline: none; pointer-events: auto; }
@@ -262,6 +266,26 @@
 </div>
 
 <div id="memoList"></div>
+
+<!-- MUSIC DICTIONARY -->
+<div class="card">
+    <h2>Music Dictionary</h2>
+    <div style="position:relative;margin-bottom:1rem;">
+        <input id="dictSearch" type="search" placeholder="Search terms, definitions, or language…"
+            style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:0.7rem 1rem 0.7rem 2.4rem;font-size:0.95rem;outline:none;box-sizing:border-box;"
+            autocomplete="off" spellcheck="false">
+        <span style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);font-size:1rem;pointer-events:none;">🔍</span>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:1rem;" id="dictLangFilter">
+        <button class="btn-toggle active" data-lang="all">All</button>
+        <button class="btn-toggle" data-lang="it">🇮🇹 Italian</button>
+        <button class="btn-toggle" data-lang="de">🇩🇪 German</button>
+        <button class="btn-toggle" data-lang="fr">🇫🇷 French</button>
+        <button class="btn-toggle" data-lang="en">🇬🇧 English</button>
+    </div>
+    <div id="dictResults" style="display:flex;flex-direction:column;gap:6px;max-height:480px;overflow-y:auto;"></div>
+    <div id="dictCount" style="margin-top:0.6rem;font-size:0.72rem;color:var(--text-muted);text-align:right;"></div>
+</div>
 
 <script>
 // ─── AUDIO CONTEXT ───────────────────────────────────────────
@@ -940,6 +964,470 @@ initDB().then(()=>{
     droneSync();
     renderMemos();
 });
-</script>
+
+// ─── SERVICE WORKER ──────────────────────────────────────────
+if('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+}
+
+// ─── MUSIC DICTIONARY ────────────────────────────────────────
+const DICT = [
+    // ── TEMPO ──────────────────────────────────────────────────────────
+    {t:"Grave",       l:"it", c:"Tempo", d:"Very slow and solemn (≈ 40–50 BPM)"},
+    {t:"Largo",       l:"it", c:"Tempo", d:"Broad and very slow (≈ 40–60 BPM)"},
+    {t:"Larghetto",   l:"it", c:"Tempo", d:"Slightly faster than Largo (≈ 60–66 BPM)"},
+    {t:"Lento",       l:"it", c:"Tempo", d:"Slow (≈ 45–60 BPM)"},
+    {t:"Adagio",      l:"it", c:"Tempo", d:"Slow and stately; literally 'at ease' (≈ 66–76 BPM)"},
+    {t:"Adagietto",   l:"it", c:"Tempo", d:"Slightly faster than Adagio (≈ 70–80 BPM)"},
+    {t:"Andante",     l:"it", c:"Tempo", d:"Walking pace; moderately slow (≈ 76–108 BPM)"},
+    {t:"Andantino",   l:"it", c:"Tempo", d:"Slightly faster than Andante (≈ 80–108 BPM)"},
+    {t:"Moderato",    l:"it", c:"Tempo", d:"Moderate tempo (≈ 108–120 BPM)"},
+    {t:"Allegretto",  l:"it", c:"Tempo", d:"Moderately fast; slightly slower than Allegro (≈ 112–120 BPM)"},
+    {t:"Allegro",     l:"it", c:"Tempo", d:"Fast and lively (≈ 120–156 BPM)"},
+    {t:"Allegro vivace", l:"it", c:"Tempo", d:"Fast and very lively (≈ 144–168 BPM)"},
+    {t:"Vivace",      l:"it", c:"Tempo", d:"Lively and fast (≈ 156–176 BPM)"},
+    {t:"Vivacissimo", l:"it", c:"Tempo", d:"Very fast and lively (≈ 172–176 BPM)"},
+    {t:"Presto",      l:"it", c:"Tempo", d:"Very fast (≈ 168–200 BPM)"},
+    {t:"Prestissimo", l:"it", c:"Tempo", d:"As fast as possible (≈ 200+ BPM)"},
+    {t:"Langsam",     l:"de", c:"Tempo", d:"Slow (equivalent of Lento)"},
+    {t:"Mäßig",       l:"de", c:"Tempo", d:"Moderate (equivalent of Moderato)"},
+    {t:"Bewegt",      l:"de", c:"Tempo", d:"Agitated, moving; implies a brisk tempo"},
+    {t:"Lebhaft",     l:"de", c:"Tempo", d:"Lively (equivalent of Vivace)"},
+    {t:"Schnell",     l:"de", c:"Tempo", d:"Fast (equivalent of Allegro)"},
+    {t:"Sehr schnell",l:"de", c:"Tempo", d:"Very fast (equivalent of Presto)"},
+    {t:"Lent",        l:"fr", c:"Tempo", d:"Slow (equivalent of Lento)"},
+    {t:"Modéré",      l:"fr", c:"Tempo", d:"Moderate tempo"},
+    {t:"Vif",         l:"fr", c:"Tempo", d:"Lively, quick"},
+    {t:"Vite",        l:"fr", c:"Tempo", d:"Fast"},
+
+    // ── TEMPO MODIFIERS ───────────────────────────────────────────────
+    {t:"Accelerando", l:"it", c:"Tempo modifier", d:"Gradually speeding up (abbr. accel.)"},
+    {t:"Ritardando",  l:"it", c:"Tempo modifier", d:"Gradually slowing down (abbr. rit. or ritard.)"},
+    {t:"Rallentando", l:"it", c:"Tempo modifier", d:"Gradually slowing down; similar to ritardando (abbr. rall.)"},
+    {t:"Ritenuto",    l:"it", c:"Tempo modifier", d:"Held back; suddenly slower (abbr. rit. or riten.)"},
+    {t:"Rubato",      l:"it", c:"Tempo modifier", d:"'Robbed time'; flexible tempo for expressive phrasing"},
+    {t:"A tempo",     l:"it", c:"Tempo modifier", d:"Return to the original tempo after a deviation"},
+    {t:"Tempo primo", l:"it", c:"Tempo modifier", d:"Return to the first (original) tempo of the piece"},
+    {t:"L'istesso tempo", l:"it", c:"Tempo modifier", d:"At the same tempo despite a meter change"},
+    {t:"Stringendo",  l:"it", c:"Tempo modifier", d:"Pressing forward; increasing tension and speed"},
+    {t:"Allargando",  l:"it", c:"Tempo modifier", d:"Broadening; slower and often louder"},
+    {t:"Calando",     l:"it", c:"Tempo modifier", d:"Gradually slower and softer; dying away"},
+    {t:"Poco a poco", l:"it", c:"Tempo modifier", d:"Little by little; applied to gradual changes"},
+    {t:"Subito",      l:"it", c:"Tempo modifier", d:"Suddenly; immediately (e.g. subito piano = suddenly soft)"},
+
+    // ── DYNAMICS ──────────────────────────────────────────────────────
+    {t:"Pianissimo",  l:"it", c:"Dynamics", d:"Very soft (pp)"},
+    {t:"Piano",       l:"it", c:"Dynamics", d:"Soft (p)"},
+    {t:"Mezzo piano", l:"it", c:"Dynamics", d:"Moderately soft (mp)"},
+    {t:"Mezzo forte", l:"it", c:"Dynamics", d:"Moderately loud (mf)"},
+    {t:"Forte",       l:"it", c:"Dynamics", d:"Loud (f)"},
+    {t:"Fortissimo",  l:"it", c:"Dynamics", d:"Very loud (ff)"},
+    {t:"Fortepiano",  l:"it", c:"Dynamics", d:"Loud then immediately soft (fp)"},
+    {t:"Sforzando",   l:"it", c:"Dynamics", d:"Sudden strong accent on a single note or chord (sfz or sf)"},
+    {t:"Sforzato",    l:"it", c:"Dynamics", d:"Forced, accented; same as sforzando (sfz)"},
+    {t:"Rinforzando", l:"it", c:"Dynamics", d:"Reinforced; slight sudden increase in dynamic (rfz)"},
+    {t:"Crescendo",   l:"it", c:"Dynamics", d:"Gradually getting louder (cresc. or <)"},
+    {t:"Decrescendo", l:"it", c:"Dynamics", d:"Gradually getting softer (decresc. or >)"},
+    {t:"Diminuendo",  l:"it", c:"Dynamics", d:"Gradually getting softer; synonym of decrescendo (dim.)"},
+    {t:"Morendo",     l:"it", c:"Dynamics", d:"Dying away; getting softer and slower"},
+    {t:"Niente",      l:"it", c:"Dynamics", d:"Nothing; the extreme of soft, silence (n or °)"},
+    {t:"Stark",       l:"de", c:"Dynamics", d:"Strong, loud"},
+    {t:"Schwach",     l:"de", c:"Dynamics", d:"Weak, soft"},
+
+    // ── ARTICULATION ──────────────────────────────────────────────────
+    {t:"Staccato",    l:"it", c:"Articulation", d:"Short and detached; notes cut off before their full value"},
+    {t:"Staccatissimo",l:"it",c:"Articulation", d:"Very short and detached; even more so than staccato"},
+    {t:"Legato",      l:"it", c:"Articulation", d:"Smooth and connected; notes flow into one another"},
+    {t:"Tenuto",      l:"it", c:"Articulation", d:"Held for full value; sometimes implies a slight stress"},
+    {t:"Marcato",     l:"it", c:"Articulation", d:"Marked; accented more than a standard accent (^)"},
+    {t:"Accentato",   l:"it", c:"Articulation", d:"Accented (>)"},
+    {t:"Portato",     l:"it", c:"Articulation", d:"Carried; between legato and staccato — slightly separated"},
+    {t:"Non legato",  l:"it", c:"Articulation", d:"Not legato; detached but without full staccato shortness"},
+    {t:"Pizzicato",   l:"it", c:"Articulation", d:"Plucked; string players pluck instead of bowing (pizz.)"},
+    {t:"Arco",        l:"it", c:"Articulation", d:"Return to bowing after pizzicato"},
+    {t:"Col legno",   l:"it", c:"Articulation", d:"With the wood of the bow; tapping or bowing with the stick"},
+    {t:"Sul ponticello",l:"it",c:"Articulation", d:"Bow near the bridge; produces a glassy, nasal tone"},
+    {t:"Sul tasto",   l:"it", c:"Articulation", d:"Bow over the fingerboard; produces a flute-like tone"},
+    {t:"Tremolo",     l:"it", c:"Articulation", d:"Rapid repetition of a single note or alternation between two notes"},
+    {t:"Trillo",      l:"it", c:"Articulation", d:"Trill; rapid alternation between a note and the one above it"},
+    {t:"Vibrato",     l:"it", c:"Articulation", d:"Slight fluctuation in pitch for warmth and expression"},
+    {t:"Glissando",   l:"it", c:"Articulation", d:"Slide through pitches between two notes (gliss.)"},
+    {t:"Portamento",  l:"it", c:"Articulation", d:"Carrying the voice/instrument smoothly between two pitches"},
+    {t:"Flatterzunge",l:"de", c:"Articulation", d:"Flutter-tongue; rolling the tongue while playing a wind instrument"},
+    {t:"Détaché",     l:"fr", c:"Articulation", d:"Detached bowing; each note with a separate bow stroke"},
+    {t:"Martelé",     l:"fr", c:"Articulation", d:"Hammered bowing; forceful, accented separate bow strokes"},
+    {t:"Spiccato",    l:"it", c:"Articulation", d:"Bouncing bow stroke; bow leaves the string between notes"},
+    {t:"Sautillé",    l:"fr", c:"Articulation", d:"Rapid spiccato where the bow bounces by itself"},
+    {t:"Jeté",        l:"fr", c:"Articulation", d:"Thrown bow stroke producing a series of bouncing notes"},
+
+    // ── EXPRESSION & CHARACTER ────────────────────────────────────────
+    {t:"Agitato",     l:"it", c:"Expression", d:"Agitated, restless"},
+    {t:"Amoroso",     l:"it", c:"Expression", d:"Lovingly"},
+    {t:"Animato",     l:"it", c:"Expression", d:"Animated, lively"},
+    {t:"Appassionato",l:"it", c:"Expression", d:"Passionately"},
+    {t:"Brillante",   l:"it", c:"Expression", d:"Brilliant, sparkling"},
+    {t:"Cantabile",   l:"it", c:"Expression", d:"In a singing style"},
+    {t:"Capriccioso", l:"it", c:"Expression", d:"Capricious, whimsical"},
+    {t:"Comodo",      l:"it", c:"Expression", d:"Comfortable, convenient; at an easy pace"},
+    {t:"Con brio",    l:"it", c:"Expression", d:"With vigor and spirit"},
+    {t:"Con fuoco",   l:"it", c:"Expression", d:"With fire"},
+    {t:"Con moto",    l:"it", c:"Expression", d:"With motion"},
+    {t:"Con spirito", l:"it", c:"Expression", d:"With spirit"},
+    {t:"Dolce",       l:"it", c:"Expression", d:"Sweetly"},
+    {t:"Doloroso",    l:"it", c:"Expression", d:"Sorrowful, painful"},
+    {t:"Energico",    l:"it", c:"Expression", d:"Energetically"},
+    {t:"Espressivo",  l:"it", c:"Expression", d:"Expressively (espress.)"},
+    {t:"Feroce",      l:"it", c:"Expression", d:"Fierce, ferocious"},
+    {t:"Furioso",     l:"it", c:"Expression", d:"Furious, wild"},
+    {t:"Giocoso",     l:"it", c:"Expression", d:"Playful, humorous"},
+    {t:"Grandioso",   l:"it", c:"Expression", d:"Grandly, with grandeur"},
+    {t:"Grazioso",    l:"it", c:"Expression", d:"Gracefully"},
+    {t:"Lacrimoso",   l:"it", c:"Expression", d:"Tearful, weeping"},
+    {t:"Leggiero",    l:"it", c:"Expression", d:"Light, nimble"},
+    {t:"Lusigando",   l:"it", c:"Expression", d:"Coaxing, flattering; a smooth, caressing tone"},
+    {t:"Maestoso",    l:"it", c:"Expression", d:"Majestic, stately"},
+    {t:"Misterioso",  l:"it", c:"Expression", d:"Mysterious"},
+    {t:"Nobile",      l:"it", c:"Expression", d:"Noble"},
+    {t:"Pesante",     l:"it", c:"Expression", d:"Heavy, weighty"},
+    {t:"Piacevole",   l:"it", c:"Expression", d:"Pleasant, pleasing"},
+    {t:"Risoluto",    l:"it", c:"Expression", d:"Resolute, determined"},
+    {t:"Scherzando",  l:"it", c:"Expression", d:"Playfully, jokingly"},
+    {t:"Semplice",    l:"it", c:"Expression", d:"Simply, plainly"},
+    {t:"Serioso",     l:"it", c:"Expression", d:"Serious"},
+    {t:"Sostenuto",   l:"it", c:"Expression", d:"Sustained; held notes to their full length"},
+    {t:"Tranquillo",  l:"it", c:"Expression", d:"Tranquil, calm"},
+    {t:"Vivo",        l:"it", c:"Expression", d:"Lively, vivacious"},
+    {t:"Zart",        l:"de", c:"Expression", d:"Tender, delicate"},
+    {t:"Kräftig",     l:"de", c:"Expression", d:"Vigorous, strong"},
+    {t:"Innig",       l:"de", c:"Expression", d:"Heartfelt, deeply felt, intimate"},
+    {t:"Feierlich",   l:"de", c:"Expression", d:"Solemn, ceremonious"},
+    {t:"Fließend",    l:"de", c:"Expression", d:"Flowing"},
+    {t:"Ruhig",       l:"de", c:"Expression", d:"Calm, peaceful"},
+    {t:"Heiter",      l:"de", c:"Expression", d:"Cheerful, serene"},
+    {t:"Traurig",     l:"de", c:"Expression", d:"Sad, sorrowful"},
+    {t:"Leidenschaftlich",l:"de",c:"Expression",d:"Passionate, with great emotion"},
+    {t:"Doux",        l:"fr", c:"Expression", d:"Sweet, soft"},
+    {t:"Brillant",    l:"fr", c:"Expression", d:"Brilliant, sparkling"},
+    {t:"Animé",       l:"fr", c:"Expression", d:"Animated, lively"},
+    {t:"Expressif",   l:"fr", c:"Expression", d:"Expressive"},
+    {t:"Léger",       l:"fr", c:"Expression", d:"Light, nimble"},
+    {t:"Plaintif",    l:"fr", c:"Expression", d:"Mournful, plaintive"},
+
+    // ── FORM & STRUCTURE ──────────────────────────────────────────────
+    {t:"Da capo",     l:"it", c:"Form", d:"From the beginning; repeat from the start (D.C.)"},
+    {t:"Dal segno",   l:"it", c:"Form", d:"From the sign; repeat from the % symbol (D.S.)"},
+    {t:"Al fine",     l:"it", c:"Form", d:"To the end; used with D.C. or D.S. (play until 'Fine')"},
+    {t:"Fine",        l:"it", c:"Form", d:"The end; the piece concludes here"},
+    {t:"Coda",        l:"it", c:"Form", d:"Tail; a concluding passage, often marked with ⊕"},
+    {t:"Segue",       l:"it", c:"Form", d:"Continue immediately into the next section without pause"},
+    {t:"Attacca",     l:"it", c:"Form", d:"Attack immediately; begin the next movement without a break"},
+    {t:"Ostinato",    l:"it", c:"Form", d:"A persistently repeated rhythmic or melodic pattern"},
+    {t:"Basso ostinato",l:"it",c:"Form", d:"Repeated bass pattern; also called ground bass"},
+    {t:"Rondo",       l:"it", c:"Form", d:"Form with a recurring main theme (ABACADA…)"},
+    {t:"Rondeau",     l:"fr", c:"Form", d:"French equivalent of rondo form"},
+    {t:"Fugue",       l:"en", c:"Form", d:"Contrapuntal composition where a subject is introduced and developed in imitation"},
+    {t:"Fuge",        l:"de", c:"Form", d:"German term for fugue"},
+    {t:"Fuga",        l:"it", c:"Form", d:"Italian term for fugue"},
+    {t:"Canon",       l:"en", c:"Form", d:"A melody imitated exactly by one or more voices entering at intervals"},
+    {t:"Kanon",       l:"de", c:"Form", d:"German term for canon"},
+    {t:"Prelude",     l:"en", c:"Form", d:"An introductory piece; also a self-contained short piece"},
+    {t:"Prélude",     l:"fr", c:"Form", d:"French term for prelude"},
+    {t:"Preludio",    l:"it", c:"Form", d:"Italian term for prelude"},
+    {t:"Nocturne",    l:"fr", c:"Form", d:"Night piece; lyrical, expressive character piece"},
+    {t:"Notturno",    l:"it", c:"Form", d:"Italian term for nocturne"},
+    {t:"Étude",       l:"fr", c:"Form", d:"Study piece designed to develop a specific technique"},
+    {t:"Studio",      l:"it", c:"Form", d:"Italian term for étude/study"},
+    {t:"Sonata",      l:"it", c:"Form", d:"Multi-movement work for solo or chamber instrument"},
+    {t:"Sonatina",    l:"it", c:"Form", d:"Short or simpler sonata"},
+    {t:"Concerto",    l:"it", c:"Form", d:"Work for soloist(s) and orchestra"},
+    {t:"Sinfonia",    l:"it", c:"Form", d:"Symphony or orchestral introduction"},
+    {t:"Suite",       l:"fr", c:"Form", d:"Collection of pieces often in dance forms"},
+    {t:"Partita",     l:"it", c:"Form", d:"A set of variations or a suite of dance movements"},
+    {t:"Overture",    l:"en", c:"Form", d:"Orchestral introduction to an opera, oratorio, or play"},
+    {t:"Ouverture",   l:"fr", c:"Form", d:"French term for overture"},
+    {t:"Ouvertura",   l:"it", c:"Form", d:"Italian term for overture"},
+    {t:"Aria",        l:"it", c:"Form", d:"A self-contained song for solo voice, typically in an opera"},
+    {t:"Recitative",  l:"en", c:"Form", d:"Sung speech used in opera and oratorio to advance the narrative"},
+    {t:"Recitativo",  l:"it", c:"Form", d:"Italian term for recitative"},
+    {t:"Récitatif",   l:"fr", c:"Form", d:"French term for recitative"},
+    {t:"Theme and variations",l:"en",c:"Form",d:"A theme presented and then repeated with changes in melody, rhythm, harmony, or texture"},
+    {t:"Durchführung",l:"de", c:"Form", d:"Development section in sonata form"},
+    {t:"Exposition",  l:"en", c:"Form", d:"Opening section of sonata form presenting the main themes"},
+    {t:"Recapitulation",l:"en",c:"Form",d:"Final section of sonata form restating themes in the tonic"},
+
+    // ── HARMONY & THEORY ──────────────────────────────────────────────
+    {t:"Consonance",  l:"en", c:"Harmony", d:"Pleasing combination of notes that feels stable and resolved"},
+    {t:"Dissonance",  l:"en", c:"Harmony", d:"Combination of notes that creates tension and feels unresolved"},
+    {t:"Resolution",  l:"en", c:"Harmony", d:"Movement from dissonance to consonance"},
+    {t:"Cadence",     l:"en", c:"Harmony", d:"Harmonic progression giving a sense of conclusion or pause"},
+    {t:"Authentic cadence",l:"en",c:"Harmony",d:"V–I (or V7–I) progression; strong sense of resolution"},
+    {t:"Plagal cadence",l:"en",c:"Harmony",d:"IV–I progression; often called the 'Amen' cadence"},
+    {t:"Half cadence", l:"en",c:"Harmony",d:"Cadence ending on V; creates expectation for continuation"},
+    {t:"Deceptive cadence",l:"en",c:"Harmony",d:"V–vi (or other non-tonic) progression; avoids expected resolution"},
+    {t:"Modulation",  l:"en", c:"Harmony", d:"Moving from one key to another within a piece"},
+    {t:"Tonicization",l:"en", c:"Harmony", d:"Temporarily treating a chord other than tonic as a local tonic"},
+    {t:"Chromaticism",l:"en", c:"Harmony", d:"Use of notes outside the diatonic scale for color and tension"},
+    {t:"Diatonicism", l:"en", c:"Harmony", d:"Use of only the notes within a given major or minor scale"},
+    {t:"Pedal point",  l:"en",c:"Harmony", d:"A sustained or repeated note (usually bass) while harmony changes above it"},
+    {t:"Suspension",  l:"en", c:"Harmony", d:"A note held over from a previous chord creating temporary dissonance"},
+    {t:"Appoggiatura",l:"it", c:"Harmony", d:"A leaning note; an ornamental note taking stress from the following main note"},
+    {t:"Passing tone",l:"en", c:"Harmony", d:"Non-harmonic note that steps between two chord tones"},
+    {t:"Neighbor tone",l:"en",c:"Harmony", d:"Non-harmonic note a step above or below a chord tone, returning to it"},
+    {t:"Sequence",    l:"en", c:"Harmony", d:"Repetition of a pattern at a different pitch level"},
+    {t:"Parallel motion",l:"en",c:"Harmony",d:"Two voices moving in the same direction by the same interval"},
+    {t:"Contrary motion",l:"en",c:"Harmony",d:"Two voices moving in opposite directions"},
+    {t:"Oblique motion",l:"en",c:"Harmony",d:"One voice stays on the same pitch while the other moves"},
+
+    // ── MELODY & COUNTERPOINT ─────────────────────────────────────────
+    {t:"Cantus firmus",l:"it", c:"Counterpoint", d:"Fixed melody used as the basis for a contrapuntal composition"},
+    {t:"Counterpoint", l:"en",c:"Counterpoint", d:"Technique of combining two or more melodic lines simultaneously"},
+    {t:"Contrapuntal", l:"en",c:"Counterpoint", d:"Relating to or written in counterpoint"},
+    {t:"Imitation",   l:"en", c:"Counterpoint", d:"Repetition of a melody in a different voice shortly after"},
+    {t:"Inversion",   l:"en", c:"Counterpoint", d:"Turning a melody upside down — ascending intervals become descending"},
+    {t:"Retrograde",  l:"en", c:"Counterpoint", d:"Playing a melody backwards"},
+    {t:"Augmentation",l:"en", c:"Counterpoint", d:"Repeating a theme with all note values lengthened (doubled)"},
+    {t:"Diminution",  l:"en", c:"Counterpoint", d:"Repeating a theme with all note values shortened (halved)"},
+    {t:"Stretto",     l:"it", c:"Counterpoint", d:"Overlapping imitation; new voice enters before previous one finishes"},
+    {t:"Episode",     l:"en", c:"Counterpoint", d:"Passage between subject entries in a fugue"},
+    {t:"Answer",      l:"en", c:"Counterpoint", d:"The second voice's entry of the subject in a fugue, typically at the fifth"},
+    {t:"Subject",     l:"en", c:"Counterpoint", d:"The main theme of a fugue, introduced in a single voice"},
+
+    // ── RHYTHM ────────────────────────────────────────────────────────
+    {t:"Syncopation", l:"en", c:"Rhythm", d:"Emphasis on normally weak beats or off-beats"},
+    {t:"Hemiola",     l:"en", c:"Rhythm", d:"Rhythmic shift creating the feel of 3 beats vs 2, e.g. two bars of 3/4 felt as three of 2/4"},
+    {t:"Anacrusis",   l:"en", c:"Rhythm", d:"Upbeat; one or more notes before the first strong beat (also 'pickup')"},
+    {t:"Downbeat",    l:"en", c:"Rhythm", d:"The first, strongest beat of a measure"},
+    {t:"Upbeat",      l:"en", c:"Rhythm", d:"The last beat of a measure; leads into the next downbeat"},
+    {t:"Cross-rhythm",l:"en", c:"Rhythm", d:"Simultaneous use of contrasting rhythmic patterns"},
+    {t:"Polyrhythm",  l:"en", c:"Rhythm", d:"Two or more different rhythms played simultaneously"},
+    {t:"Polymeter",   l:"en", c:"Rhythm", d:"Two or more different time signatures played simultaneously"},
+    {t:"Compound meter",l:"en",c:"Rhythm", d:"Meter in which each beat divides into three equal parts (e.g. 6/8, 9/8)"},
+    {t:"Simple meter",l:"en", c:"Rhythm", d:"Meter in which each beat divides into two equal parts (e.g. 2/4, 3/4, 4/4)"},
+    {t:"Triplet",     l:"en", c:"Rhythm", d:"Three notes played in the time of two of the same value"},
+    {t:"Quintuplet",  l:"en", c:"Rhythm", d:"Five notes played in the time of four (or two) of the same value"},
+    {t:"Tuplet",      l:"en", c:"Rhythm", d:"Any irregular grouping of notes (triplets, quintuplets, etc.)"},
+    {t:"Swing",       l:"en", c:"Rhythm", d:"Jazz feel where paired eighth notes are played long-short rather than equal"},
+    {t:"Groove",      l:"en", c:"Rhythm", d:"Rhythmic feel that compels movement; quality of a rhythm section locking together"},
+
+    // ── TEXTURE & SCORING ─────────────────────────────────────────────
+    {t:"Monophony",   l:"en", c:"Texture", d:"Single melodic line with no accompaniment"},
+    {t:"Homophony",   l:"en", c:"Texture", d:"Melody with chordal accompaniment; all voices move together"},
+    {t:"Polyphony",   l:"en", c:"Texture", d:"Multiple independent melodic lines sounding simultaneously"},
+    {t:"Heterophony", l:"en", c:"Texture", d:"Simultaneous variations of the same melody by different voices"},
+    {t:"Unison",      l:"en", c:"Texture", d:"Two or more voices playing or singing the same pitch"},
+    {t:"Octave",      l:"en", c:"Texture", d:"Interval of 12 semitones; the same note at double or half the frequency"},
+    {t:"Divisi",      l:"it", c:"Texture", d:"Divided; section splits into two or more parts (div.)"},
+    {t:"A due",       l:"it", c:"Texture", d:"For two; two instruments play the same part, or after divisi"},
+    {t:"Tutti",       l:"it", c:"Texture", d:"All; entire ensemble plays together"},
+    {t:"Soli",        l:"it", c:"Texture", d:"Plural of solo; a small group of players, not the full section"},
+    {t:"Obbligato",   l:"it", c:"Texture", d:"Obligatory; an independent instrumental part essential to the piece"},
+    {t:"Ad libitum",  l:"it", c:"Texture", d:"At liberty; performer may freely interpret or omit (ad lib.)"},
+    {t:"Tacet",       l:"it", c:"Texture", d:"Silent; the instrument does not play for an extended passage"},
+
+    // ── NOTATION & PERFORMANCE DIRECTIONS ────────────────────────────
+    {t:"Fermata",     l:"it", c:"Notation", d:"Hold; sustain a note or rest longer than its written value (𝄐)"},
+    {t:"Arpeggio",    l:"it", c:"Notation", d:"Notes of a chord played in rapid succession rather than simultaneously"},
+    {t:"Ossia",       l:"it", c:"Notation", d:"'Or else'; an alternative, usually easier, passage"},
+    {t:"Senza",       l:"it", c:"Notation", d:"Without (e.g. senza sordino = without mute)"},
+    {t:"Con",         l:"it", c:"Notation", d:"With (e.g. con sordino = with mute)"},
+    {t:"Sordino",     l:"it", c:"Notation", d:"Mute; device to dampen sound (sordini = plural)"},
+    {t:"Sourdine",    l:"fr", c:"Notation", d:"French term for mute"},
+    {t:"Dämpfer",     l:"de", c:"Notation", d:"German term for mute"},
+    {t:"Divisi",      l:"it", c:"Notation", d:"Divide the section to play separate written parts"},
+    {t:"Loco",        l:"it", c:"Notation", d:"Play as written after an 8va or 8vb indication"},
+    {t:"8va",         l:"it", c:"Notation", d:"Play one octave higher than written"},
+    {t:"8vb",         l:"it", c:"Notation", d:"Play one octave lower than written"},
+    {t:"Simile",      l:"it", c:"Notation", d:"Continue in the same manner as indicated"},
+    {t:"Volta",       l:"it", c:"Notation", d:"Time; prima volta = first time, seconda volta = second time (repeat endings)"},
+    {t:"Bis",         l:"it", c:"Notation", d:"Twice; repeat the marked passage"},
+    {t:"Colla voce",  l:"it", c:"Notation", d:"With the voice; accompaniment follows the soloist's tempo freely"},
+    {t:"Come sopra",  l:"it", c:"Notation", d:"As above; as before"},
+    {t:"Senza misura",l:"it", c:"Notation", d:"Without measure; free of regular barring and meter"},
+    {t:"Lunga pausa", l:"it", c:"Notation", d:"Long pause; hold the rest for an extended duration"},
+
+    // ── INTERVALS ─────────────────────────────────────────────────────
+    {t:"Unison",      l:"en", c:"Interval", d:"0 semitones; same pitch"},
+    {t:"Minor 2nd",   l:"en", c:"Interval", d:"1 semitone; also called a half step or semitone"},
+    {t:"Major 2nd",   l:"en", c:"Interval", d:"2 semitones; also called a whole step or whole tone"},
+    {t:"Minor 3rd",   l:"en", c:"Interval", d:"3 semitones"},
+    {t:"Major 3rd",   l:"en", c:"Interval", d:"4 semitones"},
+    {t:"Perfect 4th", l:"en", c:"Interval", d:"5 semitones"},
+    {t:"Tritone",     l:"en", c:"Interval", d:"6 semitones; augmented 4th or diminished 5th; the 'devil's interval'"},
+    {t:"Perfect 5th", l:"en", c:"Interval", d:"7 semitones"},
+    {t:"Minor 6th",   l:"en", c:"Interval", d:"8 semitones"},
+    {t:"Major 6th",   l:"en", c:"Interval", d:"9 semitones"},
+    {t:"Minor 7th",   l:"en", c:"Interval", d:"10 semitones"},
+    {t:"Major 7th",   l:"en", c:"Interval", d:"11 semitones"},
+    {t:"Octave",      l:"en", c:"Interval", d:"12 semitones; same note class at double frequency"},
+    {t:"Diapason",    l:"fr", c:"Interval", d:"Octave; also tuning fork in French"},
+    {t:"Quinte",      l:"fr", c:"Interval", d:"Fifth"},
+    {t:"Quinte",      l:"de", c:"Interval", d:"Fifth (also Quinte in German)"},
+    {t:"Terz",        l:"de", c:"Interval", d:"Third"},
+    {t:"Sekunde",     l:"de", c:"Interval", d:"Second"},
+
+    // ── SCALES & MODES ────────────────────────────────────────────────
+    {t:"Major scale",  l:"en",c:"Scale/Mode", d:"W-W-H-W-W-W-H pattern; bright, happy character"},
+    {t:"Minor scale (natural)",l:"en",c:"Scale/Mode",d:"W-H-W-W-H-W-W pattern; darker character"},
+    {t:"Harmonic minor",l:"en",c:"Scale/Mode",d:"Natural minor with raised 7th degree; creates leading tone"},
+    {t:"Melodic minor",l:"en",c:"Scale/Mode",d:"Raised 6th and 7th ascending, natural descending"},
+    {t:"Dorian",      l:"en", c:"Scale/Mode", d:"Mode II: like natural minor but with raised 6th; used in folk and jazz"},
+    {t:"Phrygian",    l:"en", c:"Scale/Mode", d:"Mode III: like natural minor but with lowered 2nd; Spanish/flamenco feel"},
+    {t:"Lydian",      l:"en", c:"Scale/Mode", d:"Mode IV: like major but with raised 4th; dreamy, ethereal"},
+    {t:"Mixolydian",  l:"en", c:"Scale/Mode", d:"Mode V: like major but with lowered 7th; rock and folk common"},
+    {t:"Aeolian",     l:"en", c:"Scale/Mode", d:"Mode VI: natural minor scale"},
+    {t:"Locrian",     l:"en", c:"Scale/Mode", d:"Mode VII: diminished feel; rarely used as a tonal center"},
+    {t:"Pentatonic",  l:"en", c:"Scale/Mode", d:"5-note scale; major pentatonic (1-2-3-5-6) or minor pentatonic (1-b3-4-5-b7)"},
+    {t:"Blues scale",  l:"en",c:"Scale/Mode", d:"Minor pentatonic plus a flattened 5th (the 'blue note')"},
+    {t:"Whole tone",  l:"en", c:"Scale/Mode", d:"Scale of 6 notes all a whole step apart; creates ambiguous, dreamlike sound"},
+    {t:"Chromatic scale",l:"en",c:"Scale/Mode",d:"12-note scale using every semitone"},
+    {t:"Octatonic",   l:"en", c:"Scale/Mode", d:"8-note scale alternating whole and half steps; also called diminished scale"},
+    {t:"Ganztonleiter",l:"de",c:"Scale/Mode", d:"Whole-tone scale"},
+    {t:"Gamme",       l:"fr", c:"Scale/Mode", d:"Scale"},
+    {t:"Tonleiter",   l:"de", c:"Scale/Mode", d:"Scale (literally 'tone ladder')"},
+
+    // ── CHORDS ────────────────────────────────────────────────────────
+    {t:"Triad",       l:"en", c:"Chords", d:"Three-note chord; root, third, and fifth"},
+    {t:"Major triad", l:"en", c:"Chords", d:"Root, major 3rd, perfect 5th; bright sound"},
+    {t:"Minor triad", l:"en", c:"Chords", d:"Root, minor 3rd, perfect 5th; darker sound"},
+    {t:"Diminished triad",l:"en",c:"Chords",d:"Root, minor 3rd, diminished 5th; tense, unstable"},
+    {t:"Augmented triad",l:"en",c:"Chords",d:"Root, major 3rd, augmented 5th; dreamy, unstable"},
+    {t:"Seventh chord",l:"en",c:"Chords", d:"Triad plus a seventh; adds color and tension"},
+    {t:"Dominant 7th",l:"en", c:"Chords", d:"Major triad + minor 7th; strong pull toward tonic (V7)"},
+    {t:"Major 7th",   l:"en", c:"Chords", d:"Major triad + major 7th; jazz-influenced, lush"},
+    {t:"Minor 7th",   l:"en", c:"Chords", d:"Minor triad + minor 7th; smooth, common in jazz"},
+    {t:"Half-diminished",l:"en",c:"Chords",d:"Diminished triad + minor 7th (ø); used in ii chord of minor keys"},
+    {t:"Fully diminished",l:"en",c:"Chords",d:"Diminished triad + diminished 7th (°7); symmetric, ambiguous"},
+    {t:"Suspended chord",l:"en",c:"Chords",d:"3rd replaced by 2nd (sus2) or 4th (sus4); open, unresolved sound"},
+    {t:"Added chord",  l:"en",c:"Chords", d:"Chord with an added note not part of the basic 7th structure (e.g. add9)"},
+    {t:"Slash chord",  l:"en",c:"Chords", d:"Chord with a specified bass note other than the root (e.g. C/E)"},
+    {t:"Polychord",   l:"en", c:"Chords", d:"Two distinct chords played simultaneously"},
+    {t:"Cluster",     l:"en", c:"Chords", d:"Group of adjacent notes (semitones or tones) played together"},
+
+    // ── VOICE & INSTRUMENT TYPES ──────────────────────────────────────
+    {t:"Soprano",     l:"it", c:"Voice type", d:"Highest female voice range"},
+    {t:"Mezzo-soprano",l:"it",c:"Voice type", d:"Middle female voice, lower than soprano"},
+    {t:"Contralto",   l:"it", c:"Voice type", d:"Lowest female voice range"},
+    {t:"Alto",        l:"it", c:"Voice type", d:"Lower female voice; also a range in choral writing"},
+    {t:"Tenor",       l:"it", c:"Voice type", d:"Highest standard male voice range"},
+    {t:"Baritone",    l:"it", c:"Voice type", d:"Middle male voice between tenor and bass"},
+    {t:"Bass",        l:"en", c:"Voice type", d:"Lowest male voice range"},
+    {t:"Basso profondo",l:"it",c:"Voice type",d:"Exceptionally deep bass voice"},
+    {t:"Falsetto",    l:"it", c:"Voice type", d:"Upper register of the voice above modal range; light, flute-like quality"},
+    {t:"Voix de tête",l:"fr", c:"Voice type", d:"Head voice; upper resonance register"},
+    {t:"Voix de poitrine",l:"fr",c:"Voice type",d:"Chest voice; lower, fuller vocal register"},
+
+    // ── MUSIC THEORY CONCEPTS ─────────────────────────────────────────
+    {t:"Tonic",       l:"en", c:"Theory", d:"The first degree of a scale; the home pitch (I)"},
+    {t:"Supertonic",  l:"en", c:"Theory", d:"The second degree of a scale (II)"},
+    {t:"Mediant",     l:"en", c:"Theory", d:"The third degree of a scale (III)"},
+    {t:"Subdominant", l:"en", c:"Theory", d:"The fourth degree of a scale (IV)"},
+    {t:"Dominant",    l:"en", c:"Theory", d:"The fifth degree of a scale; strong pull back to tonic (V)"},
+    {t:"Submediant",  l:"en", c:"Theory", d:"The sixth degree of a scale (VI)"},
+    {t:"Leading tone",l:"en", c:"Theory", d:"The seventh degree; a half step below tonic, strongly pulls upward (VII)"},
+    {t:"Subtonic",    l:"en", c:"Theory", d:"The seventh degree a whole step below tonic; weaker pull than leading tone"},
+    {t:"Enharmonic",  l:"en", c:"Theory", d:"Same pitch, different name (e.g. C# and Db)"},
+    {t:"Transposition",l:"en",c:"Theory", d:"Moving all notes of a piece up or down by a constant interval"},
+    {t:"Intonation",  l:"en", c:"Theory", d:"Accuracy of pitch; playing or singing in tune"},
+    {t:"Temperament", l:"en", c:"Theory", d:"System for tuning intervals; equal temperament divides the octave into 12 equal semitones"},
+    {t:"Just intonation",l:"en",c:"Theory",d:"Tuning based on pure frequency ratios; sounds more natural but not modulation-friendly"},
+    {t:"Circle of fifths",l:"en",c:"Theory",d:"Diagram showing all 12 major (and minor) keys arranged by perfect fifth relationships"},
+    {t:"Relative key",l:"en", c:"Theory", d:"Major and minor keys sharing the same key signature (e.g. C major / A minor)"},
+    {t:"Parallel key",l:"en", c:"Theory", d:"Major and minor keys sharing the same tonic (e.g. C major / C minor)"},
+    {t:"Key signature",l:"en",c:"Theory", d:"Sharps or flats at the start of a staff indicating the key"},
+    {t:"Time signature",l:"en",c:"Theory",d:"Fraction indicating beats per measure (top) and beat note value (bottom)"},
+    {t:"Pitch class", l:"en", c:"Theory", d:"A note regardless of octave; all Cs are the same pitch class"},
+    {t:"Register",    l:"en", c:"Theory", d:"The particular octave range of a pitch or voice"},
+    {t:"Tessitura",   l:"it", c:"Theory", d:"The range most natural and comfortable for a voice or instrument"},
+    {t:"Ambitus",     l:"it", c:"Theory", d:"The full range of pitches in a piece or voice part"},
+
+    // ── ORNAMENTS ─────────────────────────────────────────────────────
+    {t:"Trill",       l:"en", c:"Ornament", d:"Rapid alternation between a note and the semitone or whole tone above it"},
+    {t:"Mordent",     l:"en", c:"Ornament", d:"Quick oscillation: note, lower neighbor, note (lower mordent) or note, upper neighbor, note (upper mordent/inverted)"},
+    {t:"Pralltriller",l:"de", c:"Ornament", d:"Upper mordent; rapid note-upper neighbor-note figure"},
+    {t:"Turn",        l:"en", c:"Ornament", d:"Four-note ornament: upper neighbor, main note, lower neighbor, main note"},
+    {t:"Gruppetto",   l:"it", c:"Ornament", d:"Italian term for turn ornament"},
+    {t:"Grace note",  l:"en", c:"Ornament", d:"Small decorative note before the main note; acciaccatura or appoggiatura"},
+    {t:"Acciaccatura",l:"it", c:"Ornament", d:"Crushed note; a grace note played almost simultaneously with the main note (♪ with stroke)"},
+    {t:"Appoggiatura",l:"it", c:"Ornament", d:"Leaning grace note; takes half the value of the following note"},
+    {t:"Cadenza",     l:"it", c:"Ornament", d:"Virtuosic solo passage, often improvised, near the end of a concerto movement"},
+];
+
+(function(){
+    const searchEl = document.getElementById('dictSearch');
+    const resultsEl = document.getElementById('dictResults');
+    const countEl = document.getElementById('dictCount');
+    const langFilter = document.getElementById('dictLangFilter');
+
+    const LANG_LABELS = {it:'Italian', de:'German', fr:'French', en:'English'};
+    const CATEGORY_COLORS = {
+        'Tempo':'#3b82f6','Tempo modifier':'#6366f1','Dynamics':'#f59e0b',
+        'Articulation':'#10b981','Expression':'#ec4899','Form':'#8b5cf6',
+        'Harmony':'#ef4444','Counterpoint':'#14b8a6','Rhythm':'#f97316',
+        'Texture':'#06b6d4','Notation':'#84cc16','Interval':'#a78bfa',
+        'Scale/Mode':'#22d3ee','Chords':'#fb923c','Voice type':'#f472b6',
+        'Theory':'#60a5fa','Ornament':'#34d399'
+    };
+
+    let activeLang = 'all';
+
+    langFilter.addEventListener('click', e => {
+        if(e.target.tagName !== 'BUTTON') return;
+        langFilter.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+        e.target.classList.add('active');
+        activeLang = e.target.dataset.lang;
+        render();
+    });
+
+    function highlight(text, query) {
+        if(!query) return text;
+        const escaped = query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+        return text.replace(new RegExp(`(${escaped})`, 'gi'),
+            '<mark style="background:rgba(34,197,94,0.3);color:inherit;border-radius:2px;">$1</mark>');
+    }
+
+    function render() {
+        const q = searchEl.value.trim().toLowerCase();
+        const filtered = DICT.filter(entry => {
+            if(activeLang !== 'all' && entry.l !== activeLang) return false;
+            if(!q) return true;
+            return entry.t.toLowerCase().includes(q)
+                || entry.d.toLowerCase().includes(q)
+                || entry.c.toLowerCase().includes(q)
+                || LANG_LABELS[entry.l].toLowerCase().includes(q);
+        });
+
+        if(filtered.length === 0) {
+            resultsEl.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:2rem;">No terms found.</div>';
+            countEl.textContent = '';
+            return;
+        }
+
+        resultsEl.innerHTML = filtered.map(entry => {
+            const color = CATEGORY_COLORS[entry.c] || 'var(--primary)';
+            const langLabel = LANG_LABELS[entry.l] || entry.l;
+            const ht = highlight(entry.t, q);
+            const hd = highlight(entry.d, q);
+            return `<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:0.75rem 1rem;display:flex;flex-direction:column;gap:3px;">
+                <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+                    <span style="font-weight:800;font-size:1rem;">${ht}</span>
+                    <span style="font-size:0.68rem;font-weight:700;color:${color};background:${color}22;padding:1px 7px;border-radius:99px;white-space:nowrap;">${entry.c}</span>
+                    <span style="font-size:0.68rem;color:var(--text-muted);margin-left:auto;white-space:nowrap;">${langLabel}</span>
+                </div>
+                <div style="font-size:0.85rem;color:var(--text-muted);line-height:1.5;">${hd}</div>
+            </div>`;
+        }).join('');
+
+        countEl.textContent = `${filtered.length} of ${DICT.length} terms`;
+    }
+
+    let debounceTimer;
+    searchEl.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(render, 120);
+    });
+
+    render();
+})();
+
 </body>
 </html>
