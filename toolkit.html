@@ -18,176 +18,56 @@
             --text-muted: #94a3b8;
         }
 
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem;
-            line-height: 1.5;
-        }
-
+        body { font-family: system-ui, -apple-system, sans-serif; background-color: var(--bg); color: var(--text); max-width: 800px; margin: 0 auto; padding: 2rem; line-height: 1.5; }
         h1 { text-align: center; margin-bottom: 2rem; }
-        h2 { margin-top: 0; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 1.5rem; }
+        h2 { margin-top: 0; color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 1rem; }
 
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
-            text-align: center;
-        }
-
-        /* --- Metronome Layout --- */
-        #flash-bar {
-            width: 100%;
-            height: 12px;
-            background: var(--border);
-            border-radius: 6px;
-            margin-bottom: 2rem;
-            transition: background 0.05s ease-out;
-        }
-        #flash-bar.active {
-            background: var(--primary);
-            box-shadow: 0 0 20px var(--primary);
-        }
-
-        .metronome-controls {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 2rem;
-        }
-
-        .wheel-outer {
-            position: relative;
-            width: 240px;
-            height: 240px;
-            user-select: none;
-            touch-action: none;
-        }
-
-        #wheel {
-            width: 100%;
-            height: 100%;
-            border-radius: 50%;
-            background: radial-gradient(circle, #1e293b 30%, #0f172a 100%);
-            border: 12px solid var(--border);
-            position: relative;
-            cursor: grab;
-            box-shadow: inset 0 0 30px rgba(0,0,0,0.7);
-        }
-
-        /* The "knob" indicator on the wheel */
-        #wheel::after {
-            content: '';
-            position: absolute;
-            top: 15px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 14px;
-            height: 14px;
-            background: var(--primary);
-            border-radius: 50%;
-            box-shadow: 0 0 10px var(--primary);
-        }
-
-        .bpm-container {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            z-index: 10;
-        }
-
-        #bpm-display {
-            font-size: 4rem;
-            font-weight: 900;
-            color: var(--text);
-            cursor: pointer;
-            line-height: 1;
-        }
-
-        #bpm-input {
-            width: 140px;
-            background: transparent;
-            border: none;
-            color: var(--primary);
-            font-size: 4rem;
-            font-weight: 900;
-            text-align: center;
-            display: none;
-            outline: none;
-        }
-
-        .bpm-label {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 1rem;
-            width: 100%;
-            justify-content: center;
-        }
-
-        /* --- Generic Buttons --- */
-        button {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 0.8rem 1.8rem;
-            border-radius: 10px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 1rem;
-        }
-        button:hover { background: var(--primary-hover); transform: translateY(-1px); }
-        button:active { transform: translateY(0); }
-        button.is-active { background: var(--danger); }
-        button.secondary { background: var(--border); color: var(--text); }
-        button.secondary:hover { background: #475569; }
-
-        /* --- Recorder UI --- */
-        #micVisualizer {
-            width: 100%;
-            height: 80px;
-            background: #000;
-            margin-bottom: 1.5rem;
-            border-radius: 8px;
-            display: none;
-        }
-
-        .recording-item {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            border-radius: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-            text-align: left;
-        }
-
-        .wf-box { 
-            height: 100px; 
-            background: rgba(0,0,0,0.5); 
-            border-radius: 8px;
-            position: relative;
-            overflow: hidden;
-        }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2rem; margin-bottom: 2rem; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4); }
+        .drone-section { display: flex; flex-direction: column; gap: 1.5rem; }
+        .selector-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.5rem; text-align: left; display: block; }
         
-        .controls { display: flex; gap: 0.5rem; }
-        .btn-sm { padding: 0.5rem 1rem; font-size: 0.85rem; }
+        .root-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+        .interval-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(60px, 1fr)); gap: 8px; }
+
+        .btn-toggle { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 10px 5px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: all 0.2s; }
+        .btn-toggle.active { background: var(--primary); border-color: var(--primary); color: white; }
+
+        .settings-bar { display: flex; flex-wrap: wrap; gap: 15px; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: 10px; align-items: center; justify-content: center; }
+
+        .control-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .switch-ui { display: flex; background: var(--bg); border-radius: 8px; padding: 4px; border: 1px solid var(--border); }
+        .switch-ui button { background: transparent; color: var(--text-muted); border: none; padding: 4px 10px; font-size: 0.75rem; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .switch-ui button.active { background: var(--primary); color: white; }
+
+        /* Debug Console */
+        #debug-console {
+            background: #000;
+            color: #22c55e;
+            font-family: monospace;
+            font-size: 0.75rem;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 1rem;
+            min-height: 60px;
+            border: 1px solid var(--border);
+            white-space: pre-wrap;
+        }
+
+        #flash-bar { width: 100%; height: 12px; background: var(--border); border-radius: 6px; margin-bottom: 2rem; transition: background 0.05s ease-out; }
+        #flash-bar.active { background: var(--primary); box-shadow: 0 0 20px var(--primary); }
+
+        .wheel-outer { position: relative; width: 220px; height: 220px; margin: 0 auto; user-select: none; touch-action: none; }
+        #wheel { width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle, #1e293b 30%, #0f172a 100%); border: 12px solid var(--border); position: relative; cursor: grab; box-shadow: inset 0 0 30px rgba(0,0,0,0.7); }
+        #wheel::after { content: ''; position: absolute; top: 15px; left: 50%; transform: translateX(-50%); width: 14px; height: 14px; background: var(--primary); border-radius: 50%; }
+
+        .bpm-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; z-index: 10; }
+        #bpm-display { font-size: 3.5rem; font-weight: 900; color: var(--text); cursor: pointer; line-height: 1; }
+        
+        button.main-action { background: var(--primary); color: white; border: none; padding: 0.8rem 1.8rem; border-radius: 10px; font-weight: bold; cursor: pointer; transition: all 0.2s; font-size: 1rem; }
+        button.main-action.is-active { background: var(--danger); }
+        
+        .recording-item { background: var(--surface); border: 1px solid var(--border); padding: 1rem; margin-bottom: 1rem; border-radius: 12px; }
+        .wf-box { height: 80px; margin: 10px 0; background: rgba(0,0,0,0.3); border-radius: 4px; }
     </style>
 </head>
 <body>
@@ -195,279 +75,225 @@
     <h1>Musician's Practice Toolkit</h1>
 
     <div class="card">
-        <h2>Metronome</h2>
-        <div id="flash-bar"></div>
-        
-        <div class="metronome-controls">
-            <div class="wheel-outer">
-                <div class="bpm-container">
-                    <div id="bpm-display">120</div>
-                    <input type="number" id="bpm-input" min="40" max="280">
-                    <div class="bpm-label">BPM</div>
+        <h2>Drone Machine</h2>
+        <div class="drone-section">
+            <div>
+                <span class="selector-label">1. Root Note</span>
+                <div class="root-grid" id="rootGrid"></div>
+            </div>
+
+            <div>
+                <span class="selector-label">2. Chord Intervals</span>
+                <div class="interval-grid" id="intervalGrid"></div>
+            </div>
+
+            <div class="settings-bar">
+                <div class="control-group">
+                    <span class="selector-label">A Ref</span>
+                    <input type="number" id="droneRef" value="440" style="width:50px; background:var(--bg); border:1px solid var(--border); color:var(--primary); text-align:center; border-radius:4px;">
                 </div>
-                <div id="wheel"></div>
+
+                <div class="control-group">
+                    <span class="selector-label">Octave</span>
+                    <input type="number" id="droneOctave" value="3" min="1" max="6" style="width:40px; background:var(--bg); border:1px solid var(--border); color:var(--primary); text-align:center; border-radius:4px;">
+                </div>
+
+                <div class="control-group">
+                    <span class="selector-label">Tuning</span>
+                    <div class="switch-ui" id="tuningSwitch">
+                        <button data-val="just" class="active">JUST</button>
+                        <button data-val="equal">ET</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <span class="selector-label">Waveform</span>
+                    <div class="switch-ui" id="colorSwitch">
+                        <button data-val="sine" class="active">SINE</button>
+                        <button data-val="triangle">TRI</button>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                    <button id="droneToggle" class="main-action">Start</button>
+                    <button id="droneClear" class="btn-toggle" style="padding: 0.8rem 1rem;">Clear</button>
+                </div>
             </div>
 
-            <div class="action-buttons">
-                <button id="metroToggle">Start Metronome</button>
-                <button id="tapBtn" class="secondary">Tap Tempo</button>
-            </div>
-
-            <div style="display:flex; gap: 2rem; color: var(--text-muted); font-size: 0.9rem;">
-                <label style="cursor:pointer"><input type="checkbox" id="audioOn" checked> Audio Clave</label>
-                <label style="cursor:pointer"><input type="checkbox" id="visualOn" checked> Visual Flash</label>
-            </div>
+            <div id="debug-console">Debug: Select notes to see calculations...</div>
         </div>
     </div>
 
     <div class="card">
-        <h2>Audio Memos</h2>
-        <canvas id="micVisualizer"></canvas>
-        <button id="recordToggle">Start Recording</button>
-        <div id="status" style="margin-top:1rem; height: 20px; color: var(--primary); font-weight: bold; font-size: 0.8rem;"></div>
+        <h2>Metronome</h2>
+        <div id="flash-bar"></div>
+        <div class="wheel-outer">
+            <div class="bpm-container">
+                <div id="bpm-display">120</div>
+                <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: bold;">BPM</div>
+            </div>
+            <div id="wheel"></div>
+        </div>
+        <div style="margin-top: 1.5rem; display: flex; gap: 1rem; justify-content: center;">
+            <button id="metroToggle" class="main-action">Start</button>
+            <button id="tapBtn" class="btn-toggle" style="padding: 0.8rem 1rem;">Tap</button>
+        </div>
     </div>
 
     <div id="memoList"></div>
 
     <script>
-        // --- AUDIO ENGINE ---
         let audioCtx;
-        function getAudioCtx() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            return audioCtx;
+        function getCtx() { 
+            if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            return audioCtx; 
         }
 
-        // --- DATABASE ---
-        let db;
-        const initDB = () => {
-            return new Promise((res) => {
-                const req = indexedDB.open('MusicianToolkitDB', 3);
-                req.onupgradeneeded = (e) => {
-                    const dbObj = e.target.result;
-                    if (!dbObj.objectStoreNames.contains('memos')) dbObj.createObjectStore('memos', { keyPath: 'id' });
-                };
-                req.onsuccess = (e) => { db = e.target.result; res(); };
-            });
-        };
+        // --- DRONE CORE ---
+        const notes = ["C", "C#", "D", "Eb", "E", "F", "F#", "G", "Ab", "A", "Bb", "B"];
+        const ratios = [
+            {n:"Uni", s:0, r:1/1},   {n:"m2", s:1, r:16/15}, {n:"M2", s:2, r:9/8}, 
+            {n:"m3", s:3, r:6/5},   {n:"M3", s:4, r:5/4},   {n:"P4", s:5, r:4/3}, 
+            {n:"TT", s:6, r:45/32}, {n:"P5", s:7, r:3/2},   {n:"m6", s:8, r:8/5}, 
+            {n:"M6", s:9, r:5/3},   {n:"m7", s:10, r:9/5},  {n:"M7", s:11, r:15/8}, {n:"Oct", s:12, r:2/1}
+        ];
 
-        // --- METRONOME LOGIC ---
-        let bpm = 120;
-        let isPlaying = false;
-        let nextBeatTime = 0;
-        let timerID;
-        let tapTimes = [];
+        let state = { root: 0, intervals: new Set([0]), tuning: 'just', color: 'sine', running: false, octave: 3 };
+        let activeNodes = [];
+        const debugBox = document.getElementById('debug-console');
 
-        const metroBtn = document.getElementById('metroToggle');
-        const flashBar = document.getElementById('flash-bar');
-        const bpmDisplay = document.getElementById('bpm-display');
-        const bpmInput = document.getElementById('bpm-input');
-        const wheel = document.getElementById('wheel');
-
-        function playClave(time) {
-            if (!document.getElementById('audioOn').checked) return;
-            const ctx = getAudioCtx();
-            const osc = ctx.createOscillator();
-            const env = ctx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(2800, time);
-            env.gain.setValueAtTime(0.4, time);
-            env.gain.exponentialRampToValueAtTime(0.001, time + 0.08);
-            osc.connect(env);
-            env.connect(ctx.destination);
-            osc.start(time);
-            osc.stop(time + 0.1);
-        }
-
-        function scheduler() {
-            const ctx = getAudioCtx();
-            while (nextBeatTime < ctx.currentTime + 0.1) {
-                playClave(nextBeatTime);
-                if (document.getElementById('visualOn').checked) {
-                    const delay = (nextBeatTime - ctx.currentTime) * 1000;
-                    setTimeout(() => {
-                        flashBar.classList.add('active');
-                        setTimeout(() => flashBar.classList.remove('active'), 50);
-                    }, delay);
-                }
-                nextBeatTime += 60.0 / bpm;
-            }
-            timerID = setTimeout(scheduler, 25);
-        }
-
-        metroBtn.onclick = () => {
-            getAudioCtx();
-            if (isPlaying) {
-                clearTimeout(timerID);
-                metroBtn.textContent = 'Start Metronome';
-                metroBtn.classList.remove('is-active');
-            } else {
-                nextBeatTime = getAudioCtx().currentTime + 0.05;
-                scheduler();
-                metroBtn.textContent = 'Stop Metronome';
-                metroBtn.classList.add('is-active');
-            }
-            isPlaying = !isPlaying;
-        };
-
-        // Tap Tempo Logic
-        document.getElementById('tapBtn').onclick = () => {
-            const now = performance.now();
-            tapTimes.push(now);
-            if (tapTimes.length > 4) tapTimes.shift();
-            if (tapTimes.length > 1) {
-                const diffs = [];
-                for(let i=1; i<tapTimes.length; i++) diffs.push(tapTimes[i] - tapTimes[i-1]);
-                const avg = diffs.reduce((a,b) => a+b) / diffs.length;
-                updateBPM(Math.round(60000 / avg));
-            }
-        };
-
-        // BPM Controls
-        const updateBPM = (val) => {
-            bpm = Math.min(Math.max(val, 40), 280);
-            bpmDisplay.textContent = bpm;
-            bpmInput.value = bpm;
-            wheel.style.transform = `rotate(${bpm * 2}deg)`;
-        };
-
-        bpmDisplay.onclick = () => {
-            bpmDisplay.style.display = 'none';
-            bpmInput.style.display = 'block';
-            bpmInput.focus();
-        };
-
-        bpmInput.onblur = () => {
-            updateBPM(parseInt(bpmInput.value) || 120);
-            bpmInput.style.display = 'none';
-            bpmDisplay.style.display = 'block';
-        };
-
-        bpmInput.onkeydown = (e) => { if(e.key === 'Enter') bpmInput.blur(); };
-
-        // Wheel Interaction
-        let dragging = false;
-        let lastAngle = 0;
-
-        wheel.onpointerdown = (e) => {
-            dragging = true;
-            wheel.setPointerCapture(e.pointerId);
-            const rect = wheel.getBoundingClientRect();
-            lastAngle = Math.atan2(e.clientY - (rect.top + rect.height/2), e.clientX - (rect.left + rect.width/2));
-        };
-
-        window.onpointermove = (e) => {
-            if (!dragging) return;
-            const rect = wheel.getBoundingClientRect();
-            const angle = Math.atan2(e.clientY - (rect.top + rect.height/2), e.clientX - (rect.left + rect.width/2));
-            let diff = (angle - lastAngle) * (180 / Math.PI);
-            if (Math.abs(diff) > 1.5) {
-                updateBPM(bpm + (diff > 0 ? 1 : -1));
-                lastAngle = angle;
-            }
-        };
-        window.onpointerup = () => dragging = false;
-
-        // --- RECORDER LOGIC ---
-        let micStream, recorder, chunks = [], animID;
-        const recordBtn = document.getElementById('recordToggle');
-        const canvas = document.getElementById('micVisualizer');
-        const ctx2d = canvas.getContext('2d');
-
-        function drawLive(analyser) {
-            const data = new Uint8Array(analyser.frequencyBinCount);
-            const loop = () => {
-                animID = requestAnimationFrame(loop);
-                analyser.getByteTimeDomainData(data);
-                ctx2d.fillStyle = '#1e293b';
-                ctx2d.fillRect(0, 0, canvas.width, canvas.height);
-                ctx2d.lineWidth = 2; ctx2d.strokeStyle = '#22c55e';
-                ctx2d.beginPath();
-                let x = 0, slice = canvas.width / data.length;
-                for (let i=0; i<data.length; i++) {
-                    let y = (data[i] / 128.0) * canvas.height / 2;
-                    if (i===0) ctx2d.moveTo(x,y); else ctx2d.lineTo(x,y);
-                    x += slice;
-                }
-                ctx2d.stroke();
+        // UI Setup
+        notes.forEach((n, i) => {
+            const b = document.createElement('button'); b.className = 'btn-toggle'; b.textContent = n;
+            if(i===0) b.classList.add('active');
+            b.onclick = () => { 
+                document.querySelectorAll('#rootGrid .btn-toggle').forEach(el=>el.classList.remove('active')); 
+                b.classList.add('active'); state.root = i; sync(); 
             };
-            loop();
-        }
-
-        recordBtn.onclick = async () => {
-            getAudioCtx();
-            if (recorder?.state === 'recording') {
-                recorder.stop();
-                recordBtn.textContent = 'Start Recording';
-                recordBtn.classList.remove('is-active');
-                canvas.style.display = 'none';
-                cancelAnimationFrame(animID);
-                return;
-            }
-            try {
-                if (!micStream) micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                const source = getAudioCtx().createMediaStreamSource(micStream);
-                const analyser = getAudioCtx().createAnalyser();
-                source.connect(analyser);
-                canvas.style.display = 'block';
-                drawLive(analyser);
-
-                recorder = new MediaRecorder(micStream);
-                chunks = [];
-                recorder.ondataavailable = e => chunks.push(e.data);
-                recorder.onstop = async () => {
-                    const blob = new Blob(chunks, { type: 'audio/webm' });
-                    const id = Date.now().toString();
-                    const name = new Date().toISOString().split('T')[0] + '-' + Date.now().toString().slice(-4);
-                    const tx = db.transaction('memos', 'readwrite');
-                    tx.objectStore('memos').put({ id, name, blob, ts: Date.now() });
-                    tx.oncomplete = renderMemos;
-                };
-                recorder.start();
-                recordBtn.textContent = 'Stop Recording';
-                recordBtn.classList.add('is-active');
-            } catch (e) { alert("Mic required."); }
-        };
-
-        async function renderMemos() {
-            const listEl = document.getElementById('memoList');
-            listEl.innerHTML = '';
-            db.transaction('memos').objectStore('memos').getAll().onsuccess = (e) => {
-                e.target.result.sort((a,b) => b.ts - a.ts).forEach(item => {
-                    const url = URL.createObjectURL(item.blob);
-                    const div = document.createElement('div');
-                    div.className = 'recording-item';
-                    div.innerHTML = `
-                        <strong>${item.name}</strong>
-                        <div id="w-${item.id}" class="wf-box"></div>
-                        <div class="controls">
-                            <button class="btn-sm" onclick="this.ws.playPause()">Play/Pause</button>
-                            <a href="${url}" download="${item.name}.webm"><button class="btn-sm secondary">Export</button></a>
-                            <button class="btn-sm btn-danger" onclick="deleteMemo('${item.id}')">Delete</button>
-                        </div>
-                    `;
-                    listEl.appendChild(div);
-                    const ws = WaveSurfer.create({
-                        container: `#w-${item.id}`,
-                        waveColor: '#475569',
-                        progressColor: '#22c55e',
-                        barWidth: 3,
-                        url: url
-                    });
-                    div.querySelector('button').ws = ws;
-                });
-            };
-        }
-
-        window.deleteMemo = (id) => {
-            if(confirm("Delete?")) db.transaction('memos', 'readwrite').objectStore('memos').delete(id).oncomplete = renderMemos;
-        };
-
-        // Boot
-        initDB().then(() => {
-            updateBPM(120);
-            renderMemos();
+            document.getElementById('rootGrid').appendChild(b);
         });
+
+        ratios.forEach(rt => {
+            const b = document.createElement('button'); b.className = 'btn-toggle'; b.textContent = rt.n;
+            if(rt.s===0) b.classList.add('active');
+            b.onclick = () => { 
+                if(state.intervals.has(rt.s) && state.intervals.size > 1) { state.intervals.delete(rt.s); b.classList.remove('active'); }
+                else { state.intervals.add(rt.s); b.classList.add('active'); }
+                sync();
+            };
+            document.getElementById('intervalGrid').appendChild(b);
+        });
+
+        document.getElementById('droneOctave').onchange = (e) => { state.octave = parseInt(e.target.value); sync(); };
+        document.getElementById('droneRef').onchange = () => sync();
+
+        function setupSwitch(id, key) {
+            document.getElementById(id).onclick = (e) => {
+                if(e.target.tagName !== 'BUTTON') return;
+                document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.remove('active'));
+                e.target.classList.add('active');
+                state[key] = e.target.dataset.val;
+                sync();
+            };
+        }
+        setupSwitch('tuningSwitch', 'tuning');
+        setupSwitch('colorSwitch', 'color');
+
+        function sync() { updateDebug(); if(state.running) { stopDrone(); startDrone(); } }
+
+        function updateDebug() {
+            const refA = parseFloat(document.getElementById('droneRef').value) || 440;
+            // Root Frequency calculation based on A4-relative distance
+            const rootFreq = (refA * Math.pow(2, (state.root - 9) / 12)) * Math.pow(2, state.octave - 4);
+            
+            let debugText = `Root: ${notes[state.root]} (Octave ${state.octave}) @ ${rootFreq.toFixed(2)}Hz\n`;
+            debugText += `Tuning: ${state.tuning.toUpperCase()} | Waveform: ${state.color.toUpperCase()}\n`;
+            debugText += `Active Chord:\n`;
+
+            state.intervals.forEach(s => {
+                const interval = ratios.find(r=>r.s===s);
+                let f;
+                if(state.tuning === 'equal') {
+                    f = rootFreq * Math.pow(2, s/12);
+                    debugText += ` - ${interval.n}: ${f.toFixed(2)}Hz (Ratio: 2^(${s}/12))\n`;
+                } else {
+                    f = rootFreq * interval.r;
+                    debugText += ` - ${interval.n}: ${f.toFixed(2)}Hz (Ratio: ${interval.r.toFixed(3)})\n`;
+                }
+            });
+            debugBox.innerText = debugText;
+        }
+
+        function startDrone() {
+            const ctx = getCtx();
+            const refA = parseFloat(document.getElementById('droneRef').value) || 440;
+            const rootFreq = (refA * Math.pow(2, (state.root - 9) / 12)) * Math.pow(2, state.octave - 4);
+
+            state.intervals.forEach(s => {
+                let f;
+                if(state.tuning === 'equal') { f = rootFreq * Math.pow(2, s/12); }
+                else { f = rootFreq * ratios.find(r=>r.s===s).r; }
+
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = state.color;
+                osc.frequency.setValueAtTime(f, ctx.currentTime);
+                gain.gain.setValueAtTime(0, ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.12, ctx.currentTime + 0.1);
+                
+                osc.connect(gain).connect(ctx.destination);
+                osc.start();
+                activeNodes.push({osc, gain});
+            });
+        }
+
+        function stopDrone() {
+            activeNodes.forEach(n => {
+                n.gain.gain.cancelScheduledValues(audioCtx.currentTime);
+                n.gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+                setTimeout(() => {
+                    try { n.osc.stop(); } catch(e) {}
+                    n.osc.disconnect();
+                }, 150);
+            });
+            activeNodes = [];
+        }
+
+        document.getElementById('droneToggle').onclick = function() {
+            state.running = !state.running;
+            if(state.running) { startDrone(); this.textContent = "Stop"; this.classList.add('is-active'); }
+            else { stopDrone(); this.textContent = "Start"; this.classList.remove('is-active'); }
+        };
+
+        document.getElementById('droneClear').onclick = () => {
+            state.intervals = new Set([0]);
+            document.querySelectorAll('#intervalGrid .btn-toggle').forEach(b => b.classList.toggle('active', b.textContent === 'Uni'));
+            sync();
+        };
+
+        // --- METRONOME ---
+        let bpm = 120, metroRunning = false, nextTime = 0, timer;
+        const wheel = document.getElementById('wheel'), display = document.getElementById('bpm-display');
+
+        function sched() {
+            while(nextTime < audioCtx.currentTime + 0.1) {
+                const osc = audioCtx.createOscillator(); const g = audioCtx.createGain();
+                osc.frequency.value = 1000; g.gain.exponentialRampToValueAtTime(0.001, nextTime + 0.1);
+                osc.connect(g).connect(audioCtx.destination); osc.start(nextTime); osc.stop(nextTime + 0.1);
+                nextTime += 60/bpm;
+            }
+            timer = setTimeout(sched, 25);
+        }
+
+        document.getElementById('metroToggle').onclick = function() {
+            getCtx(); metroRunning = !metroRunning;
+            if(metroRunning) { nextTime = audioCtx.currentTime; sched(); this.textContent="Stop"; this.classList.add('is-active'); }
+            else { clearTimeout(timer); this.textContent="Start"; this.classList.remove('is-active'); }
+        };
+
+        // Initialize Debug
+        updateDebug();
     </script>
 </body>
 </html>
