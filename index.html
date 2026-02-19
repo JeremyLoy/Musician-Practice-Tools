@@ -216,7 +216,6 @@
             <div>
                 <span class="selector-label">Time Signature</span>
                 <div class="seg-ctrl" id="timeSigCtrl">
-                    <button data-val="1">1/1</button>
                     <button data-val="2">2/4</button>
                     <button data-val="3">3/4</button>
                     <button data-val="4" class="active">4/4</button>
@@ -507,8 +506,8 @@ detailsBtn.onclick = () => {
 let bpm         = prefs.bpm         ?? 120;
 let timeSig     = prefs.timeSig     ?? 4;
 let subdivision = prefs.subdivision ?? 1;
-let metroSound  = prefs.metroSound  ?? true;
-let metroLight  = prefs.metroLight  ?? true;
+let metroSound  = prefs.metroSound  ?? false;
+let metroLight  = prefs.metroLight  ?? false;
 let metroVolume = prefs.metroVolume ?? 0.7;
 let clickSound  = prefs.clickSound  ?? 'clave';
 let metroRunning=false, nextBeat=0, schedTimer, beatCount=0;
