@@ -47,7 +47,7 @@
         #wheel { width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle, #1e293b 30%, #0f172a 100%); border: 12px solid var(--border); position: relative; cursor: grab; }
         #wheel::after { content: ''; position: absolute; top: 15px; left: 50%; transform: translateX(-50%); width: 14px; height: 14px; background: var(--primary); border-radius: 50%; }
 
-        .bpm-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; width: 140px; pointer-events: none; }
+        .bpm-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; width: 140px; pointer-events: none; z-index: 2; }
         #bpm-display { font-size: 3.5rem; font-weight: 900; color: var(--text); cursor: pointer; line-height: 1; pointer-events: auto; }
         #bpm-input { width: 100%; background: transparent; border: none; color: var(--primary); font-size: 3.5rem; font-weight: 900; text-align: center; display: none; outline: none; pointer-events: auto; }
 
@@ -58,6 +58,7 @@
         button.main-action.is-active { background: var(--danger); }
         button.secondary { background: var(--border); color: var(--text); padding: 0.8rem 1.8rem; border-radius: 10px; font-weight: bold; cursor: pointer; border: none; }
         .num-input { background: var(--bg); border: 1px solid var(--border); color: var(--primary); padding: 5px; border-radius: 4px; width: 50px; text-align: center; font-weight: bold; }
+        .metro-mode-btn.is-active { background: var(--primary); color: white; border-color: var(--primary); }
     </style>
 </head>
 <body>
@@ -96,9 +97,10 @@
             </div>
             <div id="wheel"></div>
         </div>
-        <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
-            <button id="metroToggle" class="main-action">Start</button>
-            <button id="tapBtn" class="secondary">Tap</button>
+        <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; align-items: center;">
+            <button id="soundToggle" class="secondary metro-mode-btn">🥁 Sound</button>
+            <button id="lightToggle" class="secondary metro-mode-btn">💡 Light</button>
+            <button id="tapBtn" class="secondary">Tap Tempo</button>
         </div>
     </div>
 
@@ -106,6 +108,7 @@
         <h2>Audio Memos</h2>
         <div style="text-align:center;"><button id="recordToggle" class="main-action">Start Recording</button></div>
         <div id="status" style="margin-top:1rem; height: 20px; color: var(--primary); font-weight: bold; font-size: 0.8rem; text-align: center;"></div>
+        <canvas id="liveWaveform" height="80" style="width:100%; display:none; border-radius:8px; background:rgba(0,0,0,0.5); margin-top:1rem;"></canvas>
     </div>
 
     <div id="memoList"></div>
@@ -116,7 +119,7 @@
 
         const initDB = () => {
             return new Promise((res) => {
-                const req = indexedDB.open('Toolkit_V11', 1);
+                const req = indexedDB.open('MusiciansToolkit', 1);
                 req.onupgradeneeded = (e) => { e.target.result.createObjectStore('memos', { keyPath: 'id' }); };
                 req.onsuccess = (e) => { db = e.target.result; res(); };
             });
@@ -189,57 +192,323 @@
 
         // --- METRONOME ---
         let bpm = 120, metroRunning = false, nextBeat = 0, timer;
+        let metroSound = false, metroLight = false;
+
         const bpmDisplay = document.getElementById('bpm-display'), bpmInput = document.getElementById('bpm-input');
         const updateBPM = (v) => { bpm = Math.min(Math.max(v, 40), 280); bpmDisplay.textContent = bpm; bpmInput.value = bpm; document.getElementById('wheel').style.transform = `rotate(${bpm*1.5}deg)`; };
         bpmDisplay.onclick = () => { bpmDisplay.style.display = 'none'; bpmInput.style.display = 'block'; bpmInput.focus(); };
         bpmInput.onblur = () => { updateBPM(parseInt(bpmInput.value) || 120); bpmInput.style.display = 'none'; bpmDisplay.style.display = 'block'; };
         bpmInput.onkeydown = (e) => { if(e.key === 'Enter') bpmInput.blur(); };
 
-        function sched() { 
-            while(nextBeat < getCtx().currentTime + 0.1) { 
-                const o = getCtx().createOscillator(); const g = getCtx().createGain(); 
-                o.frequency.value = 1000; g.gain.setValueAtTime(0.3, nextBeat); g.gain.exponentialRampToValueAtTime(0.001, nextBeat+0.05); 
-                o.connect(g).connect(getCtx().destination); o.start(nextBeat); o.stop(nextBeat+0.1); 
-                nextBeat += 60/bpm; 
-            } 
-            timer = setTimeout(sched, 25); 
+        const flashBar = document.getElementById('flash-bar');
+
+        function playClave(atTime) {
+            const ctx = getCtx();
+            const SR = ctx.sampleRate;
+
+            // -- Body: sharp sine at clave fundamental with instant attack
+            const body = ctx.createOscillator();
+            const bodyGain = ctx.createGain();
+            body.type = 'sine';
+            body.frequency.setValueAtTime(2500, atTime);
+            body.frequency.exponentialRampToValueAtTime(2200, atTime + 0.04);
+            bodyGain.gain.setValueAtTime(0.65, atTime);
+            bodyGain.gain.exponentialRampToValueAtTime(0.001, atTime + 0.04);
+            body.connect(bodyGain).connect(ctx.destination);
+            body.start(atTime); body.stop(atTime + 0.05);
+
+            // -- Transient click: short noise burst through tight bandpass
+            const clickLen = Math.floor(SR * 0.012);
+            const noiseBuf = ctx.createBuffer(1, clickLen, SR);
+            const nd = noiseBuf.getChannelData(0);
+            for(let i = 0; i < clickLen; i++) nd[i] = Math.random() * 2 - 1;
+            const noise = ctx.createBufferSource();
+            noise.buffer = noiseBuf;
+            const bp = ctx.createBiquadFilter();
+            bp.type = 'bandpass';
+            bp.frequency.value = 3200;
+            bp.Q.value = 1.2;
+            const clickGain = ctx.createGain();
+            clickGain.gain.setValueAtTime(0.5, atTime);
+            clickGain.gain.exponentialRampToValueAtTime(0.001, atTime + 0.012);
+            noise.connect(bp).connect(clickGain).connect(ctx.destination);
+            noise.start(atTime); noise.stop(atTime + 0.015);
+
+            // -- Resonance: subtle high partial for brightness
+            const res = ctx.createOscillator();
+            const resGain = ctx.createGain();
+            res.type = 'sine';
+            res.frequency.setValueAtTime(3800, atTime);
+            resGain.gain.setValueAtTime(0.2, atTime);
+            resGain.gain.exponentialRampToValueAtTime(0.001, atTime + 0.02);
+            res.connect(resGain).connect(ctx.destination);
+            res.start(atTime); res.stop(atTime + 0.025);
         }
 
-        document.getElementById('metroToggle').onclick = function() { 
-            metroRunning = !metroRunning; 
-            if(metroRunning) { nextBeat = getCtx().currentTime; sched(); this.textContent = "Stop"; this.classList.add('is-active'); } 
-            else { clearTimeout(timer); this.textContent = "Start"; this.classList.remove('is-active'); } 
+        function triggerFlash(atTime) {
+            const msUntil = (atTime - getCtx().currentTime) * 1000;
+            setTimeout(() => {
+                flashBar.classList.add('active');
+                setTimeout(() => flashBar.classList.remove('active'), 80);
+            }, Math.max(0, msUntil));
+        }
+
+        function sched() {
+            while(nextBeat < getCtx().currentTime + 0.1) {
+                if(metroSound) playClave(nextBeat);
+                if(metroLight) triggerFlash(nextBeat);
+                nextBeat += 60/bpm;
+            }
+            timer = setTimeout(sched, 25);
+        }
+
+        function startMetro() {
+            if(!metroRunning) {
+                metroRunning = true;
+                nextBeat = getCtx().currentTime;
+                sched();
+            }
+        }
+
+        function stopMetro() {
+            if(metroRunning) {
+                metroRunning = false;
+                clearTimeout(timer);
+                flashBar.classList.remove('active');
+            }
+        }
+
+        function syncMetroState() {
+            if(metroSound || metroLight) startMetro();
+            else stopMetro();
+        }
+
+        document.getElementById('soundToggle').onclick = function() {
+            metroSound = !metroSound;
+            this.classList.toggle('is-active', metroSound);
+            syncMetroState();
         };
+
+        document.getElementById('lightToggle').onclick = function() {
+            metroLight = !metroLight;
+            this.classList.toggle('is-active', metroLight);
+            syncMetroState();
+        };
+
+        // --- TAP TEMPO ---
+        let tapTimes = [], tapResetTimer = null;
+        document.getElementById('tapBtn').onclick = function() {
+            const now = performance.now();
+            clearTimeout(tapResetTimer);
+            // Reset taps if more than 2 seconds since last tap
+            if(tapTimes.length > 0 && now - tapTimes[tapTimes.length - 1] > 2000) tapTimes = [];
+            tapTimes.push(now);
+            if(tapTimes.length >= 2) {
+                const intervals = [];
+                for(let i = 1; i < tapTimes.length; i++) intervals.push(tapTimes[i] - tapTimes[i-1]);
+                const avgInterval = intervals.reduce((a,b) => a+b, 0) / intervals.length;
+                updateBPM(Math.round(60000 / avgInterval));
+                if(metroRunning) { clearTimeout(timer); nextBeat = getCtx().currentTime; sched(); }
+            }
+            if(tapTimes.length > 8) tapTimes = tapTimes.slice(-8);
+            tapResetTimer = setTimeout(() => { tapTimes = []; }, 2000);
+        };
+
+        // --- WHEEL DRAG ---
+        (function() {
+            const wheel = document.getElementById('wheel');
+            const wheelOuter = wheel.parentElement;
+            let dragging = false, lastAngle = 0, lastBpm = 120;
+
+            function getAngle(e) {
+                const rect = wheelOuter.getBoundingClientRect();
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return Math.atan2(clientY - cy, clientX - cx) * (180 / Math.PI);
+            }
+
+            function onStart(e) {
+                e.preventDefault();
+                dragging = true;
+                lastAngle = getAngle(e);
+                lastBpm = bpm;
+                wheel.style.cursor = 'grabbing';
+            }
+
+            function onMove(e) {
+                if (!dragging) return;
+                e.preventDefault();
+                const angle = getAngle(e);
+                let delta = angle - lastAngle;
+                // Wrap delta to [-180, 180]
+                if (delta > 180) delta -= 360;
+                if (delta < -180) delta += 360;
+                lastAngle = angle;
+                updateBPM(bpm + Math.round(delta / 3));
+            }
+
+            function onEnd() {
+                dragging = false;
+                wheel.style.cursor = 'grab';
+            }
+
+            wheel.addEventListener('mousedown', onStart);
+            window.addEventListener('mousemove', onMove);
+            window.addEventListener('mouseup', onEnd);
+            wheel.addEventListener('touchstart', onStart, { passive: false });
+            window.addEventListener('touchmove', onMove, { passive: false });
+            window.addEventListener('touchend', onEnd);
+        })();
 
         // --- RECORDER ---
         let recorder, chunks = [], waveRegistry = {};
+        let liveAnimFrame = null, liveAnalyser = null;
+
+        function drawLiveWaveform() {
+            const canvas = document.getElementById('liveWaveform');
+            const ctx2d = canvas.getContext('2d');
+            canvas.width = canvas.offsetWidth;
+            const buf = new Uint8Array(liveAnalyser.fftSize);
+            function draw() {
+                if(!liveAnalyser) return;
+                liveAnimFrame = requestAnimationFrame(draw);
+                liveAnalyser.getByteTimeDomainData(buf);
+                ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+                ctx2d.fillStyle = 'rgba(0,0,0,0)';
+                ctx2d.strokeStyle = '#22c55e';
+                ctx2d.lineWidth = 2;
+                ctx2d.beginPath();
+                const sliceW = canvas.width / buf.length;
+                let x = 0;
+                for(let i = 0; i < buf.length; i++) {
+                    const v = buf[i] / 128.0;
+                    const y = (v * canvas.height) / 2;
+                    if(i === 0) ctx2d.moveTo(x, y); else ctx2d.lineTo(x, y);
+                    x += sliceW;
+                }
+                ctx2d.lineTo(canvas.width, canvas.height / 2);
+                ctx2d.stroke();
+            }
+            draw();
+        }
+
+        function stopLiveWaveform() {
+            if(liveAnimFrame) { cancelAnimationFrame(liveAnimFrame); liveAnimFrame = null; }
+            liveAnalyser = null;
+            const canvas = document.getElementById('liveWaveform');
+            canvas.style.display = 'none';
+            const ctx2d = canvas.getContext('2d');
+            ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
         document.getElementById('recordToggle').onclick = async function() {
-            if(recorder?.state === 'recording') { recorder.stop(); this.textContent = "Start Recording"; this.classList.remove('is-active'); return; }
+            if(recorder?.state === 'recording') {
+                recorder.stop();
+                stopLiveWaveform();
+                this.textContent = "Start Recording"; this.classList.remove('is-active');
+                document.getElementById('status').textContent = '';
+                return;
+            }
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             recorder = new MediaRecorder(stream); chunks = [];
             recorder.ondataavailable = e => chunks.push(e.data);
             recorder.onstop = () => {
+                stream.getTracks().forEach(t => t.stop());
                 const blob = new Blob(chunks, { type: 'audio/webm' });
                 const item = { id: Date.now().toString(), blob, ts: Date.now() };
-                db.transaction('memos', 'readwrite').objectStore('memos').put(item).oncomplete = renderMemos;
+                const tx = db.transaction('memos', 'readwrite');
+                tx.objectStore('memos').put(item);
+                tx.oncomplete = renderMemos;
             };
-            recorder.start(); this.textContent = "Stop Recording"; this.classList.add('is-active');
+
+            // Set up live waveform analyser
+            const audioCtxLive = getCtx();
+            liveAnalyser = audioCtxLive.createAnalyser();
+            liveAnalyser.fftSize = 2048;
+            const source = audioCtxLive.createMediaStreamSource(stream);
+            source.connect(liveAnalyser);
+            const canvas = document.getElementById('liveWaveform');
+            canvas.style.display = 'block';
+            drawLiveWaveform();
+
+            recorder.start();
+            this.textContent = "Stop Recording"; this.classList.add('is-active');
+            document.getElementById('status').textContent = '● Recording...';
         };
+
+        function saveMemoName(m, newName) {
+            m.name = newName.trim() || m.name;
+            const tx = db.transaction('memos', 'readwrite');
+            tx.objectStore('memos').put(m);
+        }
 
         function renderMemos() {
             const list = document.getElementById('memoList'); list.innerHTML = '';
             db.transaction('memos').objectStore('memos').getAll().onsuccess = (e) => {
                 e.target.result.sort((a,b)=>b.ts-a.ts).forEach(m => {
-                    const url = URL.createObjectURL(m.blob), d = document.createElement('div');
+                    const url = URL.createObjectURL(m.blob);
+                    const label = m.name || `Memo — ${new Date(m.ts).toLocaleString()}`;
+                    const d = document.createElement('div');
                     d.className = 'recording-item';
-                    d.innerHTML = `<strong>Memo ${new Date(m.ts).toLocaleTimeString()}</strong><div id="w-${m.id}" class="wf-box"></div><button class="main-action" id="p-${m.id}">Play</button> <button class="secondary" onclick="deleteMemo('${m.id}')">Delete</button>`;
+                    d.innerHTML = `
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                            <strong id="lbl-${m.id}" style="flex:1;cursor:text;" title="Click to rename">${label}</strong>
+                            <input id="inp-${m.id}" type="text" value="${label}"
+                                style="display:none;flex:1;background:var(--bg);border:1px solid var(--primary);color:var(--text);
+                                       border-radius:6px;padding:4px 8px;font-size:1rem;font-weight:700;outline:none;">
+                            <button class="secondary" id="ren-${m.id}" style="padding:0.4rem 0.8rem;font-size:0.8rem;">✏️ Rename</button>
+                        </div>
+                        <div id="w-${m.id}" class="wf-box"></div>
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;">
+                            <button class="main-action" id="p-${m.id}">Play</button>
+                            <button class="secondary" id="dl-${m.id}">Export</button>
+                            <button class="secondary" onclick="deleteMemo('${m.id}')">Delete</button>
+                        </div>`;
                     list.appendChild(d);
-                    const ws = WaveSurfer.create({ container: `#w-${m.id}`, waveColor: '#475569', progressColor: '#22c55e', url: url });
+
+                    const ws = WaveSurfer.create({ container: `#w-${m.id}`, waveColor: '#475569', progressColor: '#22c55e', url });
                     document.getElementById(`p-${m.id}`).onclick = () => ws.playPause();
+                    document.getElementById(`dl-${m.id}`).onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        const safeName = (m.name || 'memo').replace(/[^a-z0-9_\- ]/gi,'_');
+                        a.download = `${safeName}.webm`;
+                        a.click();
+                    };
+
+                    // Rename logic
+                    const lbl = document.getElementById(`lbl-${m.id}`);
+                    const inp = document.getElementById(`inp-${m.id}`);
+                    const renBtn = document.getElementById(`ren-${m.id}`);
+
+                    function enterRename() {
+                        inp.value = lbl.textContent;
+                        lbl.style.display = 'none'; inp.style.display = 'block';
+                        renBtn.textContent = '✓ Save';
+                        inp.focus(); inp.select();
+                    }
+                    function commitRename() {
+                        const newName = inp.value.trim() || lbl.textContent;
+                        lbl.textContent = newName; lbl.style.display = '';
+                        inp.style.display = 'none'; renBtn.textContent = '✏️ Rename';
+                        saveMemoName(m, newName);
+                    }
+                    renBtn.onclick = () => { if(inp.style.display === 'none') enterRename(); else commitRename(); };
+                    lbl.onclick = enterRename;
+                    inp.onblur = commitRename;
+                    inp.onkeydown = (e) => { if(e.key === 'Enter') commitRename(); if(e.key === 'Escape') { inp.style.display='none'; lbl.style.display=''; renBtn.textContent='✏️ Rename'; } };
                 });
             };
         }
-        window.deleteMemo = (id) => { if(confirm("Delete?")) db.transaction('memos', 'readwrite').objectStore('memos').delete(id).oncomplete = renderMemos; };
+        window.deleteMemo = (id) => {
+            if(confirm("Delete this memo?")) {
+                const tx = db.transaction('memos', 'readwrite');
+                tx.objectStore('memos').delete(id);
+                tx.oncomplete = renderMemos;
+            }
+        };
 
         initDB().then(() => { droneSync(); updateBPM(120); renderMemos(); });
     </script>
