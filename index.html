@@ -88,7 +88,6 @@
         .seg-ctrl button:active { opacity: 0.75; }
         .seg-ctrl button.active { background: var(--primary); color: #fff; }
         .mode-row { display: flex; gap: 8px; }
-        .metro-mode-btn.is-active { background: var(--primary); color: #fff; border-color: var(--primary); }
 
         /* RECORDER */
         .recording-item { background: var(--surface); border: 1px solid var(--border); padding: 1.2rem; margin-bottom: 1rem; border-radius: 14px; }
@@ -265,8 +264,8 @@
             <div>
                 <span class="selector-label">Output</span>
                 <div class="mode-row">
-                    <button id="soundToggle" class="secondary metro-mode-btn" style="flex:1;">🔔 Sound</button>
-                    <button id="lightToggle" class="secondary metro-mode-btn" style="flex:1;">⚡ Light</button>
+                    <button id="soundToggle" class="btn-toggle" style="flex:1;">🔔 Sound</button>
+                    <button id="lightToggle" class="btn-toggle" style="flex:1;">⚡ Light</button>
                 </div>
             </div>
             <button id="tapBtn" class="secondary" style="width:100%;">👆 Tap Tempo</button>
@@ -726,23 +725,15 @@ function stopMetro() {
     metroCard.classList.remove('beat-flash');
     updateMetroBtn();
 }
-function syncMetro() { (metroSound||metroLight)?startMetro():stopMetro(); savePrefs(); }
+// Restore output toggle states
+if(metroSound) document.getElementById('soundToggle').classList.add('active');
+if(metroLight) document.getElementById('lightToggle').classList.add('active');
 
-// Restore toggle button states
-if(metroSound) document.getElementById('soundToggle').classList.add('is-active');
-if(metroLight) document.getElementById('lightToggle').classList.add('is-active');
-
-document.getElementById('soundToggle').onclick = function() { metroSound=!metroSound; this.classList.toggle('is-active',metroSound); syncMetro(); };
-document.getElementById('lightToggle').onclick = function() { metroLight=!metroLight; this.classList.toggle('is-active',metroLight); syncMetro(); };
+document.getElementById('soundToggle').onclick = function() { metroSound=!metroSound; this.classList.toggle('active',metroSound); savePrefs(); };
+document.getElementById('lightToggle').onclick = function() { metroLight=!metroLight; this.classList.toggle('active',metroLight); savePrefs(); };
 document.getElementById('metroStartBtn').onclick = function() {
     if(metroRunning) { stopMetro(); }
-    else {
-        if(!metroSound && !metroLight) {
-            metroSound=true;
-            document.getElementById('soundToggle').classList.add('is-active');
-        }
-        startMetro();
-    }
+    else { startMetro(); }
     savePrefs();
 };
 
