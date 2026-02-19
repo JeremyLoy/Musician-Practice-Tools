@@ -109,9 +109,11 @@
             .metro-controls { min-width: unset; width: 100%; }
             .seg-ctrl button { font-size: 0.62rem; padding: 12px 2px; }
             .wheel-row { flex-direction: row; align-items: flex-start; }
-            .start-tap-col { flex-direction: column; width: auto; align-self: stretch; order: -1; }
-            .metro-start-btn { flex: 2; height: auto; font-size: 1.6rem; min-width: 72px; padding: 0.5rem; }
-            .metro-tap-btn { flex: 1; min-width: 72px; font-size: 1rem; }
+            .wheel-and-adj { flex: 1; align-items: center; }
+            .start-tap-col { flex-direction: column; width: auto; align-self: stretch; order: -1; flex: 0 0 96px; }
+            .metro-start-btn { flex: 2; height: auto; font-size: 1.6rem; padding: 0.5rem; }
+            .metro-tap-btn { flex: 1; font-size: 1rem; }
+            #metro-vol-row { order: -1; }
         }
     </style>
 </head>
@@ -234,7 +236,7 @@
                     <button data-val="cowbell">Cowbell</button>
                 </div>
             </div>
-            <div>
+            <div id="metro-vol-row">
                 <span class="selector-label">Volume</span>
                 <div class="vol-row"><span style="font-size:0.85rem;">🔇</span><input type="range" id="metroVolume" min="0" max="1" step="0.05" value="0.7"><span style="font-size:0.85rem;">🔊</span></div>
             </div>
