@@ -191,7 +191,7 @@
                     <div class="wheel-outer">
                         <div class="bpm-container">
                             <div id="bpm-display">120</div>
-                            <input type="number" id="bpm-input" min="40" max="280">
+                            <input type="number" id="bpm-input" min="40" max="280" inputmode="numeric">
                             <div id="bpm-label">BPM</div>
                         </div>
                         <div id="wheel"></div>
@@ -732,38 +732,32 @@ document.getElementById('tapBtn').onclick = () => {
 // Wheel drag
 (function(){
     const outer=wheelEl.parentElement;
-    let dragging=false, lastAngle=0, pendingDelta=0, rafId=null;
+    let dragging=false, lastAngle=0, fracBpm=0;
     const getAngle=e=>{
         const r=outer.getBoundingClientRect();
         const px=e.touches?e.touches[0].clientX:e.clientX;
         const py=e.touches?e.touches[0].clientY:e.clientY;
         return Math.atan2(py-(r.top+r.height/2), px-(r.left+r.width/2))*(180/Math.PI);
     };
-    const applyDelta=()=>{
-        rafId=null;
-        if(!pendingDelta) return;
-        updateBPMDisplay(bpm+Math.round(pendingDelta/3));
-        pendingDelta=0;
-    };
     const onMove=e=>{
         if(!dragging)return;
         const angle=getAngle(e);
         let d=angle-lastAngle; lastAngle=angle;
         if(d>180)d-=360; if(d<-180)d+=360;
-        pendingDelta+=d;
-        if(!rafId) rafId=requestAnimationFrame(applyDelta);
+        fracBpm+=d/3;
+        const whole=Math.trunc(fracBpm);
+        if(whole!==0){ updateBPMDisplay(bpm+whole); fracBpm-=whole; }
     };
     const onEnd=()=>{
         if(!dragging)return;
         dragging=false; wheelEl.style.cursor='grab';
-        if(rafId){ cancelAnimationFrame(rafId); rafId=null; }
-        if(pendingDelta){ updateBPMDisplay(bpm+Math.round(pendingDelta/3)); pendingDelta=0; }
+        fracBpm=0;
         savePrefs();
     };
-    wheelEl.addEventListener('mousedown',e=>{ e.preventDefault(); dragging=true; lastAngle=getAngle(e); pendingDelta=0; wheelEl.style.cursor='grabbing'; });
+    wheelEl.addEventListener('mousedown',e=>{ e.preventDefault(); dragging=true; lastAngle=getAngle(e); fracBpm=0; wheelEl.style.cursor='grabbing'; });
     window.addEventListener('mousemove',onMove);
     window.addEventListener('mouseup',onEnd);
-    wheelEl.addEventListener('touchstart',e=>{ e.preventDefault(); dragging=true; lastAngle=getAngle(e); pendingDelta=0; },{passive:false});
+    wheelEl.addEventListener('touchstart',e=>{ e.preventDefault(); dragging=true; lastAngle=getAngle(e); fracBpm=0; },{passive:false});
     window.addEventListener('touchmove',e=>{ if(!dragging)return; e.preventDefault(); onMove(e); },{passive:false});
     window.addEventListener('touchend',onEnd);
 })();
