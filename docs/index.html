@@ -1044,6 +1044,7 @@ document.getElementById('tapBtn').onclick = () => {
         if(!dragging)return;
         dragging=false; wheelEl.style.cursor='grab';
         fracBpm=0;
+        if(metroRunning){ buildSchedule(); pulseIndex=0; nextBeat=getCtx().currentTime; }
         savePrefs();
     };
     wheelEl.addEventListener('mousedown',e=>{ e.preventDefault(); dragging=true; lastAngle=getAngle(e); fracBpm=0; wheelEl.style.cursor='grabbing'; });
