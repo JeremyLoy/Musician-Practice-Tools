@@ -120,6 +120,28 @@
         .dict-def { font-size: 0.82rem; color: var(--text-muted); flex: 1; min-width: 0; }
         .dict-empty { color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
 
+        /* TUNER */
+        .tuner-body { display: flex; flex-direction: column; gap: 1.2rem; }
+        .tuner-note-display { text-align: center; min-height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.25rem; }
+        .tuner-note-name { font-size: 3.5rem; font-weight: 900; color: var(--text); line-height: 1; }
+        .tuner-note-name sup { font-size: 1.5rem; font-weight: 700; vertical-align: super; color: var(--text-muted); }
+        .tuner-note-name sub { font-size: 1.5rem; font-weight: 700; vertical-align: sub; color: var(--text-muted); }
+        .tuner-cents { font-size: 1.1rem; font-weight: 700; color: var(--text-muted); min-height: 1.4rem; }
+        .tuner-cents.in-tune   { color: var(--primary); }
+        .tuner-cents.near-tune { color: #eab308; }
+        .tuner-cents.out-tune  { color: var(--danger); }
+        .tuner-meter-wrap { display: flex; flex-direction: column; gap: 6px; }
+        .tuner-meter-track { position: relative; height: 18px; background: var(--bg); border: 1px solid var(--border); border-radius: 9px; overflow: hidden; width: 100%; }
+        .tuner-meter-fill { position: absolute; top: 0; bottom: 0; transition: width 0.08s ease-out, left 0.08s ease-out, background 0.15s; border-radius: 6px; }
+        .tuner-meter-fill.in-tune   { background: var(--primary); }
+        .tuner-meter-fill.near-tune { background: #eab308; }
+        .tuner-meter-fill.out-tune  { background: var(--danger); }
+        .tuner-meter-center { position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 2px; background: var(--text-muted); z-index: 2; }
+        .tuner-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border); transform: translateX(-50%); z-index: 1; }
+        .tuner-meter-labels { display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); padding: 0 2px; }
+        .tuner-status { font-size: 0.82rem; color: var(--text-muted); text-align: center; min-height: 1.2rem; }
+        .tuner-status.error { color: var(--danger); }
+
         /* BUTTONS */
         button.main-action { background: var(--primary); color: #fff; border: none; padding: 0.7rem 1.4rem; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 0.92rem; touch-action: manipulation; transition: filter 0.15s; min-height: 44px; }
         button.main-action:hover { filter: brightness(1.1); }
@@ -194,7 +216,6 @@
                         <span class="stepper-val" id="droneRefVal">440</span>
                         <button class="stepper-btn" id="droneRefPlus">+</button>
                     </div>
-                    <input type="hidden" id="droneRef" value="440">
                 </div>
                 <div class="control-group">
                     <span class="selector-label">Octave</span>
@@ -319,6 +340,48 @@
     <div id="memoList"></div>
 </div>
 
+<!-- CHROMATIC TUNER -->
+<div class="card" id="tuner-card">
+    <h2>Chromatic Tuner</h2>
+    <div class="tuner-body">
+        <div class="tuner-note-display">
+            <div class="tuner-note-name" id="tunerNoteName">—</div>
+            <div class="tuner-cents" id="tunerCentsDisplay"></div>
+        </div>
+        <div class="tuner-meter-wrap">
+            <div class="tuner-meter-track">
+                <div class="tuner-meter-fill" id="tunerMeterFill"></div>
+                <div class="tuner-meter-center"></div>
+                <div class="tuner-tick" style="left:0%"></div>
+                <div class="tuner-tick" style="left:25%"></div>
+                <div class="tuner-tick" style="left:50%"></div>
+                <div class="tuner-tick" style="left:75%"></div>
+                <div class="tuner-tick" style="left:100%"></div>
+            </div>
+            <div class="tuner-meter-labels">
+                <span>-50</span><span>-25</span><span>0</span><span>+25</span><span>+50</span>
+            </div>
+        </div>
+        <div class="settings-bar">
+            <div class="drone-row">
+                <div class="control-group">
+                    <span class="selector-label">Tuner</span>
+                    <button id="tunerToggle" class="main-action">🎤 Start Tuner</button>
+                </div>
+                <div class="control-group">
+                    <span class="selector-label">A Ref</span>
+                    <div class="stepper">
+                        <button class="stepper-btn" id="tunerRefMinus">−</button>
+                        <span class="stepper-val" id="tunerRefVal">440</span>
+                        <button class="stepper-btn" id="tunerRefPlus">+</button>
+                    </div>
+                </div>
+            </div>
+            <div id="tunerStatus" class="tuner-status"></div>
+        </div>
+    </div>
+</div>
+
 <!-- MUSICAL DICTIONARY -->
 <div class="card">
     <h2>Musical Dictionary</h2>
@@ -375,7 +438,11 @@ const getCtx = () => {
 // When the page becomes visible again after being backgrounded, resume the AudioContext
 // and resync audio. iOS suspends (or interrupts) the context when the app is backgrounded.
 document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') return;
+    if (document.visibilityState !== 'visible') {
+        // iOS kills mic access when backgrounded — stop the tuner cleanly
+        if (tunerRunning) stopTuner();
+        return;
+    }
     if (!audioCtx) return;
 
     audioCtx.resume().then(() => {
@@ -416,7 +483,7 @@ function savePrefs() {
             droneColor: droneState.color,
             droneOctave: droneState.octave,
             droneVolume: droneState.volume,
-            droneRef: parseFloat(document.getElementById('droneRef').value) || 440
+            refA
         }));
     } catch(e) {}
 }
@@ -452,6 +519,7 @@ let droneState = {
     volume:   prefs.droneVolume   ?? 0.7
 };
 let activeOscs = [], droneMaster = null;
+let refA = prefs.refA ?? prefs.droneRef ?? 440;
 
 function getDroneMaster() {
     const ctx = getCtx();
@@ -469,7 +537,6 @@ function getIntervalLabel() {
 }
 
 function updateDroneDebug() {
-    const refA = parseFloat(document.getElementById('droneRef').value) || 440;
     const rootFreq = (refA * Math.pow(2,(droneState.root-9)/12)) * Math.pow(2,droneState.octave-4);
     let txt = `ROOT: ${noteNames[droneState.root]} @ ${rootFreq.toFixed(2)}Hz\nMODE: ${droneState.tuning.toUpperCase()}\n\n`;
     [...droneState.intervals].sort((a,b)=>a-b).forEach(s => {
@@ -484,7 +551,6 @@ function updateDroneDebug() {
 
 function startDrone() {
     const ctx = getCtx();
-    const refA = parseFloat(document.getElementById('droneRef').value) || 440;
     const rootFreq = (refA * Math.pow(2,(droneState.root-9)/12)) * Math.pow(2,droneState.octave-4);
     const master = getDroneMaster();
     droneState.intervals.forEach(s => {
@@ -553,22 +619,25 @@ document.getElementById('droneClear').onclick = () => {
 };
 
 // Restore saved values
-const droneRefInput = document.getElementById('droneRef');
 const droneRefVal   = document.getElementById('droneRefVal');
 const droneOctaveInput = document.getElementById('droneOctave');
 const droneOctaveVal   = document.getElementById('droneOctaveVal');
 
-if(prefs.droneRef) { droneRefInput.value = prefs.droneRef; droneRefVal.textContent = prefs.droneRef; }
+droneRefVal.textContent = refA;
 droneOctaveInput.value = droneState.octave;
 droneOctaveVal.textContent = droneState.octave;
 
 document.getElementById('droneRefMinus').onclick = () => {
-    const v = Math.max(400, (parseFloat(droneRefInput.value)||440) - 1);
-    droneRefInput.value = v; droneRefVal.textContent = v; droneSync();
+    refA = Math.max(400, refA - 1);
+    droneRefVal.textContent = refA;
+    document.getElementById('tunerRefVal').textContent = refA;
+    droneSync(); savePrefs();
 };
 document.getElementById('droneRefPlus').onclick = () => {
-    const v = Math.min(480, (parseFloat(droneRefInput.value)||440) + 1);
-    droneRefInput.value = v; droneRefVal.textContent = v; droneSync();
+    refA = Math.min(480, refA + 1);
+    droneRefVal.textContent = refA;
+    document.getElementById('tunerRefVal').textContent = refA;
+    droneSync(); savePrefs();
 };
 document.getElementById('droneOctaveMinus').onclick = () => {
     const v = Math.max(1, (parseInt(droneOctaveInput.value)||4) - 1);
@@ -1134,6 +1203,248 @@ window.deleteMemo = id => {
     const tx=db.transaction('memos','readwrite');
     tx.objectStore('memos').delete(id);
     tx.oncomplete=renderMemos;
+};
+
+// ─── CHROMATIC TUNER ─────────────────────────────────────────
+const TUNER_NOTES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
+const TUNER_BUF_SIZE  = 8;   // rolling median window (~133 ms @ 60 fps)
+const TUNER_NOTE_HOLD = 3;   // consecutive agreeing medians before note label switches
+let tunerRunning  = false;
+let tunerStream   = null;
+let tunerSource   = null;
+let tunerAnalyser = null;
+let tunerRafId    = null;
+let tunerFreqBuf  = [];      // raw Hz rolling buffer
+let tunerLastMidi = null;    // midi of currently displayed note
+let tunerNoteCandidateMidi  = null;
+let tunerNoteCandidateCount = 0;
+
+function tunerDetectPitch(analyser, sampleRate) {
+    const bufLen = analyser.fftSize;
+    const buf = new Float32Array(bufLen);
+    analyser.getFloatTimeDomainData(buf);
+
+    // RMS silence gate
+    let rms = 0;
+    for (let i = 0; i < bufLen; i++) rms += buf[i] * buf[i];
+    if (Math.sqrt(rms / bufLen) < 0.01) return null;
+
+    // Lag range: 60 Hz – 2000 Hz
+    const minLag = Math.floor(sampleRate / 2000);
+    const maxLag = Math.floor(sampleRate / 60);
+
+    // Normalized autocorrelation (NSDF).
+    // Strategy: compute all NSDF values, find the global maximum, then take the
+    // FIRST local maximum that is at least 80% of that global max. This correctly
+    // picks the fundamental period: the 2nd harmonic produces a larger NSDF peak
+    // at 2× the lag, but the fundamental has the first significant peak.
+    const nsdfVals = new Float32Array(maxLag + 1);
+    for (let lag = minLag; lag <= maxLag; lag++) {
+        let corr = 0, norm = 0;
+        for (let i = 0; i < bufLen - lag; i++) {
+            corr += buf[i] * buf[i + lag];
+            norm += buf[i] * buf[i] + buf[i + lag] * buf[i + lag];
+        }
+        nsdfVals[lag] = norm > 0 ? (2 * corr / norm) : 0;
+    }
+    // Find global max
+    let globalMax = 0;
+    for (let lag = minLag; lag <= maxLag; lag++) if (nsdfVals[lag] > globalMax) globalMax = nsdfVals[lag];
+    if (globalMax < 0.75) return null; // reject low-confidence / silent frames
+
+    // Find the first local maximum >= 80% of globalMax (the fundamental)
+    const threshold = globalMax * 0.8;
+    let bestLag = -1;
+    for (let lag = minLag + 1; lag < maxLag; lag++) {
+        if (nsdfVals[lag] >= threshold &&
+            nsdfVals[lag] >= nsdfVals[lag - 1] &&
+            nsdfVals[lag] >= nsdfVals[lag + 1]) {
+            bestLag = lag;
+            break;
+        }
+    }
+    if (bestLag === -1) return null;
+
+    // Parabolic interpolation using the same NSDF values used to find the peak,
+    // so the interpolated offset is consistent with how bestLag was selected.
+    const y1 = nsdfVals[bestLag - 1];
+    const y2 = nsdfVals[bestLag];
+    const y3 = nsdfVals[bestLag + 1];
+    const denom = 2 * (2 * y2 - y1 - y3);
+    const refined = denom !== 0 ? bestLag + (y1 - y3) / denom : bestLag;
+    return sampleRate / refined;
+}
+
+function tunerFreqToNoteInfo(freq, overrideMidi = null) {
+    const midi       = overrideMidi ?? Math.round(69 + 12 * Math.log2(freq / refA));
+    const noteName   = TUNER_NOTES[((midi % 12) + 12) % 12];
+    const octave     = Math.floor(midi / 12) - 1;
+    const targetFreq = refA * Math.pow(2, (midi - 69) / 12);
+    const cents      = 1200 * Math.log2(freq / targetFreq);
+    return { noteName, octave, cents, midi };
+}
+
+function tunerUpdateDisplay(freq, lockedMidi = null) {
+    const nameEl   = document.getElementById('tunerNoteName');
+    const centsEl  = document.getElementById('tunerCentsDisplay');
+    const fillEl   = document.getElementById('tunerMeterFill');
+
+    if (freq === null) {
+        nameEl.innerHTML = '—';
+        centsEl.textContent = '';
+        centsEl.className = 'tuner-cents';
+        fillEl.style.width = '0%';
+        fillEl.style.left  = '50%';
+        fillEl.className = 'tuner-meter-fill';
+        return;
+    }
+
+    const { noteName, octave, cents } = tunerFreqToNoteInfo(freq, lockedMidi);
+
+    // Note name: letter + optional accidental as <sup> + octave as <sub>
+    const letter     = noteName.replace(/[♯♭]/g, '');
+    const accidental = noteName.match(/[♯♭]/)?.[0] ?? '';
+    nameEl.innerHTML = `${letter}${accidental ? `<sup>${accidental}</sup>` : ''}<sub>${octave}</sub>`;
+
+    // Cents display
+    const cr = Math.round(cents);
+    centsEl.textContent = cr >= 0 ? `+${cr}¢` : `${cr}¢`;
+
+    // Colour class
+    const abs = Math.abs(cents);
+    const col = abs <= 5 ? 'in-tune' : abs <= 20 ? 'near-tune' : 'out-tune';
+    centsEl.className = `tuner-cents ${col}`;
+    fillEl.className  = `tuner-meter-fill ${col}`;
+
+    // Meter fill: centre at 50%, fill extends toward deviation
+    const clamped = Math.max(-50, Math.min(50, cents));
+    const pct     = clamped / 100 * 100; // -50 to +50 as percentage of track width
+    if (cents >= 0) {
+        fillEl.style.left  = '50%';
+        fillEl.style.width = `${pct}%`;
+    } else {
+        fillEl.style.left  = `${50 + pct}%`;
+        fillEl.style.width = `${-pct}%`;
+    }
+}
+
+function tunerTick() {
+    if (!tunerRunning || !tunerAnalyser) return;
+    const raw = tunerDetectPitch(tunerAnalyser, getCtx().sampleRate);
+
+    if (raw === null) {
+        // Silence: flush buffer and clear display
+        tunerFreqBuf = [];
+        tunerLastMidi = null;
+        tunerNoteCandidateMidi = null;
+        tunerNoteCandidateCount = 0;
+        tunerUpdateDisplay(null);
+    } else {
+        // Accumulate into rolling buffer
+        tunerFreqBuf.push(raw);
+        if (tunerFreqBuf.length > TUNER_BUF_SIZE) tunerFreqBuf.shift();
+
+        // Wait for half the buffer to fill before showing anything
+        if (tunerFreqBuf.length >= Math.ceil(TUNER_BUF_SIZE / 2)) {
+            const sorted = [...tunerFreqBuf].sort((a, b) => a - b);
+            const median = sorted[Math.floor(sorted.length / 2)];
+
+            // Hysteresis: only commit to a new note after TUNER_NOTE_HOLD confirmations
+            const { midi } = tunerFreqToNoteInfo(median);
+            if (tunerLastMidi === null) {
+                // First lock — accept immediately
+                tunerLastMidi = midi;
+            } else if (midi !== tunerLastMidi) {
+                if (midi === tunerNoteCandidateMidi) {
+                    tunerNoteCandidateCount++;
+                    if (tunerNoteCandidateCount >= TUNER_NOTE_HOLD) {
+                        tunerLastMidi = midi;
+                        tunerNoteCandidateMidi = null;
+                        tunerNoteCandidateCount = 0;
+                    }
+                } else {
+                    tunerNoteCandidateMidi = midi;
+                    tunerNoteCandidateCount = 1;
+                }
+            }
+
+            tunerUpdateDisplay(median, tunerLastMidi);
+        }
+    }
+
+    tunerRafId = requestAnimationFrame(tunerTick);
+}
+
+function tunerUpdateBtn() {
+    const btn = document.getElementById('tunerToggle');
+    btn.textContent = tunerRunning ? '⏹ Stop Tuner' : '🎤 Start Tuner';
+    btn.classList.toggle('is-active', tunerRunning);
+}
+
+async function startTuner() {
+    const statusEl = document.getElementById('tunerStatus');
+    statusEl.textContent = 'Requesting microphone…';
+    statusEl.className   = 'tuner-status';
+    try {
+        tunerStream = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
+        });
+    } catch (err) {
+        statusEl.textContent = err.name === 'NotAllowedError'
+            ? 'Microphone access denied. Please allow mic access and try again.'
+            : `Microphone error: ${err.message}`;
+        statusEl.className = 'tuner-status error';
+        tunerRunning = false;
+        tunerUpdateBtn();
+        return;
+    }
+    const ctx      = getCtx();
+    tunerSource    = ctx.createMediaStreamSource(tunerStream);
+    tunerAnalyser  = ctx.createAnalyser();
+    tunerAnalyser.fftSize = 4096;
+    tunerAnalyser.smoothingTimeConstant = 0;
+    tunerSource.connect(tunerAnalyser);
+    // Not connected to ctx.destination — no audio passthrough / feedback
+    statusEl.textContent = '';
+    tunerRunning = true;
+    tunerUpdateBtn();
+    tunerTick();
+}
+
+function stopTuner() {
+    tunerRunning = false;
+    if (tunerRafId)    { cancelAnimationFrame(tunerRafId); tunerRafId = null; }
+    if (tunerSource)   { try { tunerSource.disconnect(); }   catch(e) {} tunerSource = null; }
+    if (tunerAnalyser) { try { tunerAnalyser.disconnect(); } catch(e) {} tunerAnalyser = null; }
+    if (tunerStream)   { tunerStream.getTracks().forEach(t => t.stop()); tunerStream = null; }
+    tunerFreqBuf = [];
+    tunerLastMidi = null;
+    tunerNoteCandidateMidi = null;
+    tunerNoteCandidateCount = 0;
+    tunerUpdateDisplay(null);
+    tunerUpdateBtn();
+    document.getElementById('tunerStatus').textContent = '';
+    document.getElementById('tunerStatus').className   = 'tuner-status';
+}
+
+// Wire up tuner buttons
+document.getElementById('tunerToggle').onclick = () => {
+    tunerRunning ? stopTuner() : startTuner();
+};
+
+// Tuner A Ref stepper — syncs shared refA and drone display
+document.getElementById('tunerRefVal').textContent = refA;
+document.getElementById('tunerRefMinus').onclick = () => {
+    refA = Math.max(400, refA - 1);
+    document.getElementById('tunerRefVal').textContent  = refA;
+    document.getElementById('droneRefVal').textContent  = refA;
+    droneSync(); savePrefs();
+};
+document.getElementById('tunerRefPlus').onclick = () => {
+    refA = Math.min(480, refA + 1);
+    document.getElementById('tunerRefVal').textContent  = refA;
+    document.getElementById('droneRefVal').textContent  = refA;
+    droneSync(); savePrefs();
 };
 
 // ─── MUSICAL DICTIONARY ──────────────────────────────────────
