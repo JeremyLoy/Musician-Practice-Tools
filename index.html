@@ -79,6 +79,32 @@
         .seg-ctrl button.active { background: var(--primary); color: #fff; }
         .mode-row { display: flex; gap: 8px; }
 
+        /* TIME SIGNATURE EDITOR */
+        .ts-spinners { display:flex; gap:12px; margin-bottom:8px; flex-wrap:wrap; }
+        .ts-spinner-group { display:flex; flex-direction:column; gap:2px; }
+        .stepper { display:flex; align-items:center; gap:4px; }
+        .stepper-val { min-width:28px; text-align:center; font-weight:700; font-size:1rem; color:var(--text); }
+        .beat-group-editor { display:flex; flex-wrap:wrap; align-items:center; gap:0; margin-top:6px; }
+        .bg-cell {
+            background:var(--bg); border:1px solid var(--primary);
+            min-width:28px; min-height:36px; display:flex; align-items:center;
+            justify-content:center; font-size:0.7rem; font-weight:700;
+            color:var(--primary); flex-shrink:0; user-select:none;
+        }
+        .bg-cell:first-child { border-radius:6px 0 0 6px; }
+        .bg-cell.group-end { border-radius:0 6px 6px 0; margin-right:3px; }
+        .bg-divider {
+            background:transparent; border:none; width:10px; min-height:36px;
+            cursor:pointer; position:relative; padding:0; touch-action:manipulation;
+            flex-shrink:0;
+        }
+        .bg-divider::after {
+            content:''; position:absolute; top:15%; left:50%;
+            transform:translateX(-50%); width:2px; height:70%;
+            background:var(--border); border-radius:1px; transition:background 0.1s, width 0.1s;
+        }
+        .bg-divider.split::after { background:var(--primary); width:3px; top:0; height:100%; }
+
         /* VIEWPORT FLASH */
         #viewport-flash { position: fixed; inset: 0; pointer-events: none; z-index: 9999; border: 0px solid var(--primary); transition: border-width 0.04s ease-out, opacity 0.04s ease-out; opacity: 0; }
         #viewport-flash.beat-flash { border-width: 12px; opacity: 1; }
@@ -216,12 +242,26 @@
         <div class="metro-controls">
             <div>
                 <span class="selector-label">Time Signature</span>
-                <div class="seg-ctrl" id="timeSigCtrl">
-                    <button data-val="2">2/4</button>
-                    <button data-val="3">3/4</button>
-                    <button data-val="4" class="active">4/4</button>
-                    <button data-val="6">6/8</button>
+                <div class="ts-spinners">
+                    <div class="ts-spinner-group">
+                        <span class="selector-label" style="font-size:0.65rem;">Beats (N)</span>
+                        <div class="stepper">
+                            <button class="adj-btn" id="tsNMinus">−</button>
+                            <span class="stepper-val" id="tsNVal">4</span>
+                            <button class="adj-btn" id="tsNPlus">+</button>
+                        </div>
+                    </div>
+                    <div class="ts-spinner-group">
+                        <span class="selector-label" style="font-size:0.65rem;">Note value (D)</span>
+                        <div class="stepper">
+                            <button class="adj-btn" id="tsDMinus">−</button>
+                            <span class="stepper-val" id="tsDVal">4</span>
+                            <button class="adj-btn" id="tsDPlus">+</button>
+                        </div>
+                    </div>
                 </div>
+                <div id="beatGroupEditor" class="beat-group-editor"></div>
+                <div style="font-size:0.62rem;color:var(--text-muted);margin-top:3px;">Tap between beats to merge/split groups</div>
             </div>
             <div>
                 <span class="selector-label">Subdivision</span>
@@ -319,7 +359,7 @@ function loadPrefs() { try { return JSON.parse(localStorage.getItem(PREFS_KEY)) 
 function savePrefs() {
     try {
         localStorage.setItem(PREFS_KEY, JSON.stringify({
-            bpm, timeSig, subdivision, metroSound, metroLight,
+            bpm, meter, metroSound, metroLight,
             metroVolume, clickSound,
             droneRoot: droneState.root,
             droneIntervals: [...droneState.intervals],
@@ -521,13 +561,15 @@ detailsBtn.onclick = () => {
 
 // ─── METRONOME STATE ──────────────────────────────────────────
 let bpm         = prefs.bpm         ?? 120;
-let timeSig     = prefs.timeSig     ?? 4;
-let subdivision = prefs.subdivision ?? 1;
 let metroSound  = prefs.metroSound  ?? true;
 let metroLight  = prefs.metroLight  ?? true;
 let metroVolume = prefs.metroVolume ?? 0.7;
 let clickSound  = prefs.clickSound  ?? 'clave';
-let metroRunning=false, nextBeat=0, schedTimer, beatCount=0;
+const DEFAULT_METER = { groups:[1,1,1,1], denom:4, subdivision:1 };
+let meter = Object.assign({}, DEFAULT_METER, prefs.meter ?? {});
+meter.groups = Array.isArray(meter.groups) ? meter.groups : DEFAULT_METER.groups;
+let metroRunning=false, nextBeat=0, schedTimer, pulseIndex=0;
+let schedPulses=[], totalPulses=0;
 let metroMaster = null;
 
 function getMetroMaster() {
@@ -551,7 +593,7 @@ const updateBPMDisplay = v => {
     bpmInput.value = bpm;
     wheelEl.style.transform = `rotate(${bpm*1.5}deg)`;
 };
-const updateBPM = v => { updateBPMDisplay(v); savePrefs(); };
+const updateBPM = v => { updateBPMDisplay(v); buildSchedule(); savePrefs(); };
 
 bpmDisplay.onclick = () => { bpmDisplay.style.display='none'; bpmInput.style.display='block'; bpmInput.focus(); };
 bpmInput.onblur   = () => { updateBPM(parseInt(bpmInput.value)||120); bpmInput.style.display='none'; bpmDisplay.style.display='block'; };
@@ -567,23 +609,90 @@ document.getElementById('metroVolume').oninput = e => {
     savePrefs();
 };
 
-// Restore seg controls
-document.querySelectorAll('#timeSigCtrl button').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.val)===timeSig));
-document.querySelectorAll('#subdivCtrl  button').forEach(b=>b.classList.toggle('active',parseInt(b.dataset.val)===subdivision));
-document.querySelectorAll('#clickSoundCtrl button').forEach(b=>b.classList.toggle('active',b.dataset.val===clickSound));
+// ─── TIME SIGNATURE SPINNERS + BEAT-GROUP EDITOR ─────────────
+let tsN = meter.groups.reduce((a,b)=>a+b, 0);
+let tsD = meter.denom;
 
-document.getElementById('timeSigCtrl').onclick = e => {
-    if(e.target.tagName!=='BUTTON') return;
-    document.querySelectorAll('#timeSigCtrl button').forEach(b=>b.classList.remove('active'));
-    e.target.classList.add('active');
-    timeSig=parseInt(e.target.dataset.val); beatCount=0; savePrefs();
-};
+function groupsToDividers(groups) {
+    const divs=[];
+    groups.forEach((g, gi) => {
+        for(let p=0; p<g; p++) {
+            if(gi < groups.length-1 || p < g-1) divs.push(p===g-1 && gi<groups.length-1);
+        }
+    });
+    return divs;
+}
+function dividersToGroups(N, divs) {
+    const groups=[]; let run=1;
+    for(let i=0;i<N-1;i++){ if(divs[i]){groups.push(run);run=1;}else{run++;} }
+    groups.push(run);
+    return groups;
+}
+let dividers = groupsToDividers(meter.groups);
+
+function renderBeatGroupEditor() {
+    const el=document.getElementById('beatGroupEditor');
+    el.innerHTML='';
+    for(let i=0;i<tsN;i++) {
+        const cell=document.createElement('div');
+        cell.className='bg-cell';
+        const isGroupStart=(i===0)||dividers[i-1];
+        cell.textContent=isGroupStart ? String(i+1) : '';
+        const isGroupEnd=(i===tsN-1)||dividers[i];
+        if(isGroupEnd) cell.classList.add('group-end');
+        el.appendChild(cell);
+        if(i<tsN-1) {
+            const div=document.createElement('button');
+            div.className='bg-divider'+(dividers[i]?' split':'');
+            div.setAttribute('aria-label',`Toggle boundary after beat ${i+1}`);
+            div.addEventListener('click', ()=>{
+                dividers[i]=!dividers[i];
+                meter.groups=dividersToGroups(tsN,dividers);
+                renderBeatGroupEditor();
+                applyMeterChange();
+            });
+            el.appendChild(div);
+        }
+    }
+}
+function setTsN(n) {
+    n=Math.max(1,n);
+    tsN=n;
+    dividers=dividers.slice(0,n-1);
+    while(dividers.length<n-1) dividers.push(false);
+    meter.groups=dividersToGroups(tsN,dividers);
+    document.getElementById('tsNVal').textContent=tsN;
+    renderBeatGroupEditor();
+    applyMeterChange();
+}
+function setTsD(d) {
+    d=Math.max(1,d);
+    tsD=d;
+    meter.denom=tsD;
+    document.getElementById('tsDVal').textContent=tsD;
+    applyMeterChange();
+}
+document.getElementById('tsNMinus').onclick=()=>setTsN(tsN-1);
+document.getElementById('tsNPlus').onclick =()=>setTsN(tsN+1);
+document.getElementById('tsDMinus').onclick=()=>setTsD(tsD-1);
+document.getElementById('tsDPlus').onclick =()=>setTsD(tsD+1);
+document.getElementById('tsNVal').textContent=tsN;
+document.getElementById('tsDVal').textContent=tsD;
+renderBeatGroupEditor();
+
+// ─── SUBDIVISION ──────────────────────────────────────────────
+document.querySelectorAll('#subdivCtrl button').forEach(b=>
+    b.classList.toggle('active', parseInt(b.dataset.val)===meter.subdivision));
 document.getElementById('subdivCtrl').onclick = e => {
     if(e.target.tagName!=='BUTTON') return;
     document.querySelectorAll('#subdivCtrl button').forEach(b=>b.classList.remove('active'));
     e.target.classList.add('active');
-    subdivision=parseInt(e.target.dataset.val); savePrefs();
+    meter.subdivision=parseInt(e.target.dataset.val);
+    applyMeterChange();
 };
+
+// ─── CLICK SOUND ─────────────────────────────────────────────
+document.querySelectorAll('#clickSoundCtrl button').forEach(b=>b.classList.toggle('active',b.dataset.val===clickSound));
 document.getElementById('clickSoundCtrl').onclick = e => {
     if(e.target.tagName!=='BUTTON') return;
     document.querySelectorAll('#clickSoundCtrl button').forEach(b=>b.classList.remove('active'));
@@ -710,21 +819,38 @@ function triggerFlash(atTime, isAccent) {
     }, delay);
 }
 
+function buildSchedule() {
+    schedPulses = [];
+    // One denominator unit = (4/denom) quarter notes = (4/denom)*(60/bpm) seconds
+    const denomUnitSec = (4 / meter.denom) * (60 / bpm);
+    meter.groups.forEach(groupSize => {
+        const groupDurSec = groupSize * denomUnitSec;
+        const subDur = groupDurSec / meter.subdivision;
+        for(let s=0; s<meter.subdivision; s++) {
+            schedPulses.push({ isGroupBeat: s===0, subDur });
+        }
+    });
+    totalPulses = schedPulses.length;
+}
+
+function applyMeterChange() {
+    buildSchedule();
+    if(metroRunning) { pulseIndex=0; nextBeat=getCtx().currentTime; }
+    savePrefs();
+}
+
 function sched() {
     const ctx = getCtx();
     while(nextBeat < ctx.currentTime+0.1) {
-        const isAccent = (beatCount % timeSig === 0);
-        if(metroSound) playBeat(nextBeat, isAccent);
-        if(metroLight) triggerFlash(nextBeat, isAccent);
-        if(subdivision > 1) {
-            const step = (60/bpm)/subdivision;
-            for(let s=1; s<subdivision; s++) {
-                const st = nextBeat + s*step;
-                if(metroSound) playSubdiv(st);
-            }
+        const pulse = schedPulses[pulseIndex % totalPulses];
+        const isDownbeat = (pulseIndex % totalPulses === 0);
+        if(metroSound) {
+            if(pulse.isGroupBeat) playBeat(nextBeat, isDownbeat);
+            else                  playSubdiv(nextBeat);
         }
-        beatCount++;
-        nextBeat += 60/bpm;
+        if(metroLight) triggerFlash(nextBeat, isDownbeat);
+        pulseIndex++;
+        nextBeat += pulse.subDur;
     }
     schedTimer = setTimeout(sched, 25);
 }
@@ -737,7 +863,8 @@ function updateMetroBtn() {
 }
 function startMetro() {
     if(metroRunning) return;
-    metroRunning=true; beatCount=0;
+    metroRunning=true; pulseIndex=0;
+    buildSchedule();
     nextBeat=getCtx().currentTime; sched();
     updateMetroBtn();
 }
