@@ -1,0 +1,182 @@
+:root {
+            --primary: #22c55e;
+            --danger: #ef4444;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --border: #334155;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        body { font-family: system-ui,-apple-system,sans-serif; background: var(--bg); color: var(--text); max-width: 860px; margin: 0 auto; padding: 1.5rem; line-height: 1.5; }
+        h1 { text-align: center; margin: 0 0 1.5rem; font-weight: 800; font-size: clamp(1.3rem,5vw,2rem); }
+        h2 { margin: 0 0 1.2rem; color: var(--text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 1.5px; }
+
+        .card { background: var(--surface); border: 2px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4); transition: border-color 0.06s ease-out, box-shadow 0.06s ease-out; }
+        .card.beat-flash { border-color: var(--primary) !important; box-shadow: 0 0 0 4px rgba(34,197,94,0.28), 0 10px 25px -5px rgba(0,0,0,0.4) !important; }
+
+
+        /* DRONE */
+        .drone-section { display: flex; flex-direction: column; gap: 1.2rem; }
+        .selector-label { display: block; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.4rem; font-weight: 700; }
+        .root-grid { display: grid; grid-template-columns: repeat(6,1fr); gap: 5px; }
+        .interval-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(56px,1fr)); gap: 5px; }
+        .btn-toggle { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 12px 3px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; transition: all 0.15s; touch-action: manipulation; min-height: 44px; }
+        .btn-toggle:hover:not(.active) { border-color: var(--primary); color: var(--primary); }
+        .btn-toggle:active { opacity: 0.75; }
+        .btn-toggle.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+        .settings-bar { display: flex; flex-direction: column; gap: 10px; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid var(--border); }
+        .drone-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+        .drone-row .control-group { flex: 1; width: 0; }
+        .drone-row .control-group .stepper { width: 100%; justify-content: space-between; }
+        .drone-row .control-group .stepper .stepper-val { flex: 1; }
+        .drone-row .switch-ui { width: 100%; }
+        .drone-row .switch-ui button { flex: 1; }
+        .control-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .switch-ui { display: flex; background: var(--bg); border-radius: 8px; padding: 3px; border: 1px solid var(--border); }
+        .switch-ui button { background: transparent; color: var(--text-muted); border: none; padding: 10px 12px; font-size: 0.68rem; border-radius: 5px; cursor: pointer; font-weight: 700; min-height: 44px; touch-action: manipulation; transition: all 0.15s; }
+        .switch-ui button:active { opacity: 0.75; }
+        .switch-ui button.active { background: var(--primary); color: #fff; }
+
+        .vol-row { display: flex; align-items: center; gap: 8px; width: 100%; }
+        .vol-row input[type=range] { flex: 1; }
+        input[type=range] { accent-color: var(--primary); cursor: pointer; width: 88px; height: 20px; }
+        input[type=range]::-webkit-slider-thumb { width: 28px; height: 28px; }
+        input[type=range]::-moz-range-thumb { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); border: none; }
+
+        #debug-console { background: #000; color: var(--primary); font-family: 'Courier New',monospace; font-size: 0.72rem; padding: 10px; border-radius: 8px; margin-top: 0.5rem; min-height: 65px; border: 1px solid #166534; white-space: pre-wrap; }
+        .details-btn { background: none; border: none; color: var(--text-muted); font-size: 0.73rem; cursor: pointer; padding: 3px 0; text-decoration: underline; }
+
+        /* METRONOME */
+        .metro-layout { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: flex-start; justify-content: center; }
+        .wheel-col { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+        .wheel-outer { position: relative; width: 200px; height: 200px; user-select: none; touch-action: none; }
+        #wheel { width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle,#1e293b 30%,#0f172a 100%); border: 12px solid var(--border); cursor: grab; transition: border-color 0.06s, box-shadow 0.06s; }
+        #wheel.beat-flash { border-color: var(--primary); box-shadow: 0 0 22px rgba(34,197,94,0.5); }
+        #wheel::after { content:''; position: absolute; top: 2px; left: 50%; transform: translateX(-50%); width: 20px; height: 20px; background: var(--primary); border-radius: 50%; }
+        .bpm-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; width: 130px; pointer-events: none; z-index: 2; }
+        #bpm-display { font-size: 3.2rem; font-weight: 900; color: var(--text); cursor: pointer; line-height: 1; pointer-events: auto; }
+        #bpm-input { width: 100%; background: transparent; border: none; color: var(--primary); font-size: 3.2rem; font-weight: 900; text-align: center; display: none; outline: none; pointer-events: auto; }
+        #bpm-label { font-size: 0.62rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+        .bpm-adj { display: flex; align-items: center; gap: 8px; }
+        .adj-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text); width: 44px; height: 44px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; font-weight: 700; display: flex; align-items: center; justify-content: center; transition: all 0.15s; touch-action: manipulation; }
+        .adj-btn:hover { border-color: var(--primary); color: var(--primary); }
+        .adj-btn:active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+        .wheel-row { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+        .wheel-and-adj { display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
+        .start-tap-col { display: flex; flex-direction: row; gap: 0.5rem; width: 200px; }
+        .metro-start-btn { flex: 2; font-size: 1.4rem; line-height: 1.4; border-radius: 14px; padding: 0.9rem 0.5rem; text-align: center; }
+        .metro-tap-btn { flex: 1; font-size: 0.85rem; line-height: 1.4; text-align: center; padding: 0.5rem; border-radius: 10px; }
+        .metro-controls { display: flex; flex-direction: column; gap: 1rem; flex: 1; min-width: 205px; }
+        .seg-ctrl { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        .seg-ctrl button { flex: 1; background: transparent; color: var(--text-muted); border: none; border-right: 1px solid var(--border); padding: 12px 2px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: all 0.15s; touch-action: manipulation; min-height: 44px; }
+        .seg-ctrl button:last-child { border-right: none; }
+        .seg-ctrl button:active { opacity: 0.75; }
+        .seg-ctrl button.active { background: var(--primary); color: #fff; }
+        .mode-row { display: flex; gap: 8px; }
+
+        /* TIME SIGNATURE INPUT */
+        .ts-input-row { display:flex; align-items:center; gap:10px; }
+        .ts-text-input {
+            background: var(--bg); border: 2px solid var(--border); color: var(--primary);
+            font-size: 1.6rem; font-weight: 900; text-align: center;
+            border-radius: 10px; padding: 8px 12px; width: 110px;
+            outline: none; transition: border-color 0.15s; touch-action: manipulation;
+            min-height: 44px; letter-spacing: 1px;
+        }
+        .ts-text-input:focus { border-color: var(--primary); }
+        .ts-text-input.error { border-color: var(--danger); color: var(--danger); }
+        .ts-hint { font-size: 0.68rem; color: var(--text-muted); line-height: 1.5; }
+
+        /* VIEWPORT FLASH */
+        #viewport-flash { position: fixed; inset: 0; pointer-events: none; z-index: 9999; border: 0px solid var(--primary); transition: border-width 0.04s ease-out, opacity 0.04s ease-out; opacity: 0; }
+        #viewport-flash.beat-flash { border-width: 12px; opacity: 1; }
+        #viewport-flash.beat-flash.accent { border-width: 18px; }
+
+        /* RECORDER */
+        .recording-item { background: var(--surface); border: 1px solid var(--border); padding: 1.2rem; margin-bottom: 1rem; border-radius: 14px; }
+        .wf-box { height: 88px; background: rgba(0,0,0,0.5); border-radius: 8px; margin: 12px 0; overflow: hidden; }
+        #memoList { max-height: 420px; overflow-y: auto; overscroll-behavior: contain; margin-top: 1rem; }
+        #memoList:empty { margin-top: 0; }
+
+        /* DICTIONARY */
+        .dict-search { width: 100%; padding: 10px 14px; font-size: 1rem; font-weight: 600; background: var(--bg); border: 2px solid var(--border); color: var(--text); border-radius: 10px; outline: none; transition: border-color 0.15s; min-height: 44px; box-sizing: border-box; margin-bottom: 0.75rem; }
+        .dict-search:focus { border-color: var(--primary); }
+        .dict-results { height: 380px; overflow-y: auto; overscroll-behavior: contain; }
+        .dict-item { display: flex; align-items: baseline; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--border); }
+        .dict-item:last-child { border-bottom: none; }
+        .dict-term { font-weight: 700; font-size: 0.95rem; color: var(--text); flex-shrink: 0; }
+        .dict-lang { font-size: 0.6rem; font-weight: 700; color: var(--bg); background: var(--text-muted); border-radius: 4px; padding: 2px 5px; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .dict-def { font-size: 0.82rem; color: var(--text-muted); flex: 1; min-width: 0; }
+        .dict-empty { color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
+
+        /* TUNER */
+        .tuner-body { display: flex; flex-direction: column; gap: 1.2rem; }
+        .tuner-note-display { text-align: center; min-height: 90px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.25rem; }
+        .tuner-note-name { font-size: 3.5rem; font-weight: 900; color: var(--text); line-height: 1; }
+        .tuner-note-name sup { font-size: 1.5rem; font-weight: 700; vertical-align: super; color: var(--text-muted); }
+        .tuner-note-name sub { font-size: 1.5rem; font-weight: 700; vertical-align: sub; color: var(--text-muted); }
+        .tuner-cents { font-size: 1.1rem; font-weight: 700; color: var(--text-muted); min-height: 1.4rem; }
+        .tuner-cents.in-tune   { color: var(--primary); }
+        .tuner-cents.near-tune { color: #eab308; }
+        .tuner-cents.out-tune  { color: var(--danger); }
+        .tuner-meter-wrap { display: flex; flex-direction: column; gap: 6px; }
+        .tuner-meter-track { position: relative; height: 18px; background: var(--bg); border: 1px solid var(--border); border-radius: 9px; overflow: hidden; width: 100%; }
+        .tuner-meter-fill { position: absolute; top: 0; bottom: 0; transition: width 0.08s ease-out, left 0.08s ease-out, background 0.15s; border-radius: 6px; }
+        .tuner-meter-fill.in-tune   { background: var(--primary); }
+        .tuner-meter-fill.near-tune { background: #eab308; }
+        .tuner-meter-fill.out-tune  { background: var(--danger); }
+        .tuner-meter-center { position: absolute; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 2px; background: var(--text-muted); z-index: 2; }
+        .tuner-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--border); transform: translateX(-50%); z-index: 1; }
+        .tuner-meter-labels { display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-muted); padding: 0 2px; }
+        .tuner-status { font-size: 0.82rem; color: var(--text-muted); text-align: center; min-height: 1.2rem; }
+        .tuner-status.error { color: var(--danger); }
+
+        /* BUTTONS */
+        button.main-action { background: var(--primary); color: #fff; border: none; padding: 0.7rem 1.4rem; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 0.92rem; touch-action: manipulation; transition: filter 0.15s; min-height: 44px; }
+        button.main-action:hover { filter: brightness(1.1); }
+        button.main-action:active { filter: brightness(0.9); }
+        button.main-action.is-active { background: var(--danger); }
+        button.secondary { background: var(--border); color: var(--text); padding: 0.7rem 1.3rem; border-radius: 10px; font-weight: 700; cursor: pointer; border: 1px solid transparent; font-size: 0.92rem; touch-action: manipulation; transition: all 0.15s; min-height: 44px; }
+        button.secondary:hover { border-color: var(--primary); }
+        button.secondary:active { border-color: var(--primary); filter: brightness(1.15); }
+        .num-input { background: var(--bg); border: 1px solid var(--border); color: var(--primary); padding: 5px; border-radius: 4px; width: 52px; text-align: center; font-weight: 700; }
+        .stepper { display: flex; align-items: center; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+        .stepper-btn { background: transparent; border: none; color: var(--text); font-size: 1.1rem; font-weight: 700; cursor: pointer; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; touch-action: manipulation; transition: background 0.1s; flex-shrink: 0; }
+        .stepper-btn:hover { background: var(--border); }
+        .stepper-btn:active { background: var(--primary); color: #fff; }
+        .stepper-val { color: var(--primary); font-weight: 700; font-size: 0.9rem; min-width: 40px; text-align: center; padding: 0 2px; }
+
+        /* RESPONSIVE — mobile/tablet first */
+        @media (max-width: 600px) {
+            body { padding: 1rem 0.75rem; }
+            .card { padding: 1rem; }
+            .btn-toggle { font-size: 0.72rem; padding: 12px 4px; }
+            .seg-ctrl button { font-size: 0.65rem; padding: 12px 2px; }
+            button.main-action, button.secondary { padding: 0.6rem 1rem; font-size: 0.85rem; }
+            .settings-bar { gap: 8px; padding: 0.75rem; }
+
+            /* Metronome: stack wheel column full-width, controls below */
+            .metro-layout { flex-direction: column; gap: 1rem; }
+            .wheel-col { width: 100%; }
+
+            /* Wheel row: wheel centred, Start+Tap beside it */
+            .wheel-row { flex-direction: row; align-items: center; justify-content: center; gap: 1rem; }
+            .wheel-outer { width: 160px; height: 160px; }
+            #bpm-display { font-size: 2.6rem; }
+            .wheel-and-adj { align-items: center; }
+            .bpm-adj { justify-content: center; }
+
+            /* Start/Tap: tall column to the right of the wheel */
+            .start-tap-col { flex-direction: column; width: 96px; gap: 0.5rem; }
+            .metro-start-btn { flex: 1; font-size: 1.4rem; padding: 0.75rem 0.5rem; }
+            .metro-tap-btn { font-size: 1rem; padding: 0.6rem 0.5rem; }
+
+            /* Controls: full width */
+            .metro-controls { width: 100%; min-width: unset; }
+
+            /* Drone settings */
+            .drone-row { gap: 8px; }
+        }
