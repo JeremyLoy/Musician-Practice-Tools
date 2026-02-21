@@ -109,6 +109,17 @@
         #memoList { max-height: 420px; overflow-y: auto; overscroll-behavior: contain; margin-top: 1rem; }
         #memoList:empty { margin-top: 0; }
 
+        /* DICTIONARY */
+        .dict-search { width: 100%; padding: 10px 14px; font-size: 1rem; font-weight: 600; background: var(--bg); border: 2px solid var(--border); color: var(--text); border-radius: 10px; outline: none; transition: border-color 0.15s; min-height: 44px; box-sizing: border-box; margin-bottom: 0.75rem; }
+        .dict-search:focus { border-color: var(--primary); }
+        .dict-results { max-height: 380px; overflow-y: auto; overscroll-behavior: contain; }
+        .dict-item { display: flex; align-items: baseline; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--border); }
+        .dict-item:last-child { border-bottom: none; }
+        .dict-term { font-weight: 700; font-size: 0.95rem; color: var(--text); flex-shrink: 0; }
+        .dict-lang { font-size: 0.6rem; font-weight: 700; color: var(--bg); background: var(--text-muted); border-radius: 4px; padding: 2px 5px; flex-shrink: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .dict-def { font-size: 0.82rem; color: var(--text-muted); flex: 1; min-width: 0; }
+        .dict-empty { color: var(--text-muted); font-size: 0.85rem; padding: 1rem 0; text-align: center; }
+
         /* BUTTONS */
         button.main-action { background: var(--primary); color: #fff; border: none; padding: 0.7rem 1.4rem; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 0.92rem; touch-action: manipulation; transition: filter 0.15s; min-height: 44px; }
         button.main-action:hover { filter: brightness(1.1); }
@@ -308,7 +319,15 @@
     <div id="memoList"></div>
 </div>
 
+<!-- MUSICAL DICTIONARY -->
+<div class="card">
+    <h2>Musical Dictionary</h2>
+    <input type="text" id="dictSearch" class="dict-search" placeholder="Search terms…" autocomplete="off" spellcheck="false" inputmode="text">
+    <div id="dictResults" class="dict-results"></div>
+</div>
+
 <script type="module">
+import DICT from './dictionary.js';
 
 // Unlock iOS audio on first user interaction (bypasses the mute switch).
 // iOS requires a user gesture before AudioContext audio plays, and also
@@ -331,6 +350,7 @@ const USER_ACTIVATION_EVENTS = [
 ]
 
 function unmuteIosAudio () {
+console.log("in umute ios");
   const AudioContext = window.webkitAudioContext
 
   // To detect iOS, check for touch device and confirm Safari-only
@@ -1214,6 +1234,28 @@ window.deleteMemo = id => {
     tx.objectStore('memos').delete(id);
     tx.oncomplete=renderMemos;
 };
+
+// ─── MUSICAL DICTIONARY ──────────────────────────────────────
+function renderDict(query) {
+    const q = query.trim().toLowerCase();
+    const el = document.getElementById('dictResults');
+    const hits = q
+        ? DICT.filter(e => e.term.toLowerCase().includes(q) || e.def.toLowerCase().includes(q))
+        : DICT;
+    if (!hits.length) {
+        el.innerHTML = `<div class="dict-empty">No results for "${query}"</div>`;
+        return;
+    }
+    el.innerHTML = hits.map(e =>
+        `<div class="dict-item">
+            <span class="dict-term">${e.term}</span>
+            <span class="dict-lang">${e.lang}</span>
+            <span class="dict-def">${e.def}</span>
+        </div>`
+    ).join('');
+}
+document.getElementById('dictSearch').addEventListener('input', e => renderDict(e.target.value));
+renderDict(''); // show all terms on load
 
 // ─── INIT ────────────────────────────────────────────────────
 initDB().then(()=>{
