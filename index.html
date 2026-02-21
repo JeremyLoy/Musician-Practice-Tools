@@ -310,38 +310,26 @@
 
 <script type="module">
 
-// Unlock iOS audio on first user interaction (bypasses mute switch).
-// iOS requires a user gesture before any AudioContext audio will play.
-// We play a silent base64-encoded WAV via both HTML5 audio and Web Audio API
-// to maximise compatibility across iOS versions, listening on 9 gesture types.
-(function unmuteIosAudio() {
-    const EVENTS = ['auxclick','click','contextmenu','dblclick','keydown','keyup','mousedown','mouseup','touchend'];
-    // Minimal silent WAV (44 bytes — 1 sample at 8kHz)
-    const silentWav = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+// Unlock iOS audio on first user interaction (bypasses the mute switch).
+// iOS requires a user gesture before AudioContext audio plays, and also
+// requires a real HTML5 audio element to be played to bypass the mute switch.
+// We play a silent looping <audio> tag on first gesture, then pause it.
+// The audio element must remain in memory (not GC'd) during the session.
+(function() {
+    // A minimal valid silent MP3 — short enough to be cheap, recognised by iOS Safari.
+    const SILENT_MP3 = 'data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAABAAADhgD///////////////////////////////////////////8AAAA5TEFNRTMuOThyAc0AAAAAAAAAABSAJAqEAAABAAAAA4YvHmU0AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQxAACBFQBH9AAACAAAI0gAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==';
+    const audio = new Audio();
+    audio.src = SILENT_MP3;
+    audio.loop = true;
 
-    let html5Done = false, webAudioDone = false;
-
-    function done() { if (html5Done && webAudioDone) EVENTS.forEach(e => document.removeEventListener(e, unlock)); }
-
-    function unlock() {
-        // HTML5 audio path
-        if (!html5Done) {
-            const audio = new Audio(); audio.src = silentWav;
-            audio.play().then(() => { html5Done = true; done(); }).catch(() => {});
-        }
-        // Web Audio path — create and immediately disconnect a silent buffer
-        if (!webAudioDone) {
-            try {
-                const ctx = new (window.AudioContext || window.webkitAudioContext)();
-                const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
-                const src = ctx.createBufferSource(); src.buffer = buf;
-                src.connect(ctx.destination); src.start(0); src.disconnect();
-                webAudioDone = true; done();
-            } catch(e) {}
-        }
-    }
-
-    EVENTS.forEach(e => document.addEventListener(e, unlock, { passive: true }));
+    const EVENTS = ['touchstart', 'touchend', 'mousedown', 'keydown', 'click'];
+    const unlock = () => {
+        audio.play().then(() => {
+            audio.pause();
+            EVENTS.forEach(e => document.removeEventListener(e, unlock));
+        }).catch(() => {});
+    };
+    EVENTS.forEach(e => document.addEventListener(e, unlock, { once: false, passive: true }));
 })();
 
 // ─── AUDIO CONTEXT ───────────────────────────────────────────
