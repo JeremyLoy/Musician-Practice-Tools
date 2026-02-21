@@ -34,7 +34,13 @@
         .btn-toggle:active { opacity: 0.75; }
         .btn-toggle.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
-        .settings-bar { display: flex; flex-wrap: wrap; gap: 10px; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: 12px; align-items: center; justify-content: center; border: 1px solid var(--border); }
+        .settings-bar { display: flex; flex-direction: column; gap: 10px; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid var(--border); }
+        .drone-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+        .drone-row .control-group { flex: 1; width: 0; }
+        .drone-row .control-group .stepper { width: 100%; justify-content: space-between; }
+        .drone-row .control-group .stepper .stepper-val { flex: 1; }
+        .drone-row .switch-ui { width: 100%; }
+        .drone-row .switch-ui button { flex: 1; }
         .control-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .switch-ui { display: flex; background: var(--bg); border-radius: 8px; padding: 3px; border: 1px solid var(--border); }
         .switch-ui button { background: transparent; color: var(--text-muted); border: none; padding: 10px 12px; font-size: 0.68rem; border-radius: 5px; cursor: pointer; font-weight: 700; min-height: 44px; touch-action: manipulation; transition: all 0.15s; }
@@ -81,9 +87,8 @@
 
         /* TIME SIGNATURE EDITOR */
         .ts-spinners { display:flex; justify-content:space-between; margin-bottom:8px; }
-        .ts-spinner-group { display:flex; flex-direction:column; gap:2px; align-items:center; flex:1; }
-        .stepper { display:flex; align-items:center; gap:8px; }
-        .stepper-val { min-width:32px; text-align:center; font-weight:700; font-size:1.1rem; color:var(--text); }
+        .ts-spinner-group { display:flex; flex-direction:column; gap:4px; align-items:center; flex:1; }
+        .ts-spinner-group .stepper { width:100%; justify-content:space-between; }
         .beat-group-editor { display:flex; align-items:stretch; margin-top:6px; width:100%; }
         .bg-cell {
             background:var(--bg); border:1px solid var(--primary);
@@ -129,22 +134,36 @@
         .stepper-btn:active { background: var(--primary); color: #fff; }
         .stepper-val { color: var(--primary); font-weight: 700; font-size: 0.9rem; min-width: 40px; text-align: center; padding: 0 2px; }
 
-        /* RESPONSIVE */
-        @media (max-width: 500px) {
+        /* RESPONSIVE — mobile/tablet first */
+        @media (max-width: 600px) {
             body { padding: 1rem 0.75rem; }
-            .btn-toggle { font-size: 0.72rem; padding: 12px 1px; }
-            .wheel-outer { width: 170px; height: 170px; }
-            #bpm-display { font-size: 2.8rem; }
-            .settings-bar { gap: 7px; padding: 0.75rem; }
+            .card { padding: 1rem; }
+            .btn-toggle { font-size: 0.72rem; padding: 12px 4px; }
+            .seg-ctrl button { font-size: 0.65rem; padding: 12px 2px; }
             button.main-action, button.secondary { padding: 0.6rem 1rem; font-size: 0.85rem; }
-            .metro-controls { min-width: unset; width: 100%; }
-            .seg-ctrl button { font-size: 0.62rem; padding: 12px 2px; }
-            .wheel-row { flex-direction: row; align-items: flex-start; }
-            .wheel-and-adj { flex: 1; align-items: center; }
-            .start-tap-col { flex-direction: column; width: auto; align-self: stretch; order: -1; flex: 0 0 96px; }
-            .metro-start-btn { flex: 2; height: auto; font-size: 1.6rem; padding: 0.5rem; }
-            .metro-tap-btn { flex: 1; font-size: 1rem; }
-            #metro-vol-row { order: -1; }
+            .settings-bar { gap: 8px; padding: 0.75rem; }
+
+            /* Metronome: stack wheel column full-width, controls below */
+            .metro-layout { flex-direction: column; gap: 1rem; }
+            .wheel-col { width: 100%; }
+
+            /* Wheel row: wheel centred, Start+Tap beside it */
+            .wheel-row { flex-direction: row; align-items: center; justify-content: center; gap: 1rem; }
+            .wheel-outer { width: 160px; height: 160px; }
+            #bpm-display { font-size: 2.6rem; }
+            .wheel-and-adj { align-items: center; }
+            .bpm-adj { justify-content: center; }
+
+            /* Start/Tap: tall column to the right of the wheel */
+            .start-tap-col { flex-direction: column; width: 96px; gap: 0.5rem; }
+            .metro-start-btn { flex: 1; font-size: 1.4rem; padding: 0.75rem 0.5rem; }
+            .metro-tap-btn { font-size: 1rem; padding: 0.6rem 0.5rem; }
+
+            /* Controls: full width */
+            .metro-controls { width: 100%; min-width: unset; }
+
+            /* Drone settings */
+            .drone-row { gap: 8px; }
         }
     </style>
 </head>
@@ -166,43 +185,49 @@
             <div class="interval-grid" id="intervalGrid"></div>
         </div>
         <div class="settings-bar">
-            <div class="control-group">
-                <span class="selector-label">A Ref</span>
-                <div class="stepper">
-                    <button class="stepper-btn" id="droneRefMinus">−</button>
-                    <span class="stepper-val" id="droneRefVal">440</span>
-                    <button class="stepper-btn" id="droneRefPlus">+</button>
+            <div class="drone-row">
+                <div class="control-group">
+                    <span class="selector-label">A Ref</span>
+                    <div class="stepper">
+                        <button class="stepper-btn" id="droneRefMinus">−</button>
+                        <span class="stepper-val" id="droneRefVal">440</span>
+                        <button class="stepper-btn" id="droneRefPlus">+</button>
+                    </div>
+                    <input type="hidden" id="droneRef" value="440">
                 </div>
-                <input type="hidden" id="droneRef" value="440">
-            </div>
-            <div class="control-group">
-                <span class="selector-label">Octave</span>
-                <div class="stepper">
-                    <button class="stepper-btn" id="droneOctaveMinus">−</button>
-                    <span class="stepper-val" id="droneOctaveVal">4</span>
-                    <button class="stepper-btn" id="droneOctavePlus">+</button>
+                <div class="control-group">
+                    <span class="selector-label">Octave</span>
+                    <div class="stepper">
+                        <button class="stepper-btn" id="droneOctaveMinus">−</button>
+                        <span class="stepper-val" id="droneOctaveVal">4</span>
+                        <button class="stepper-btn" id="droneOctavePlus">+</button>
+                    </div>
+                    <input type="hidden" id="droneOctave" value="4" min="1" max="6">
                 </div>
-                <input type="hidden" id="droneOctave" value="4" min="1" max="6">
             </div>
-            <div class="control-group" style="flex:1;min-width:140px;">
+            <div class="drone-row">
                 <span class="selector-label">Volume</span>
                 <div class="vol-row"><span style="font-size:0.85rem;">🔈</span><input type="range" id="droneVolume" min="0" max="1" step="0.05" value="0.7"><span style="font-size:0.85rem;">🔊</span></div>
             </div>
-            <div class="control-group"><span class="selector-label">Tuning</span>
-                <div class="switch-ui" id="tuningSwitch">
-                    <button data-val="just" class="active">JUST</button>
-                    <button data-val="equal">ET</button>
+            <div class="drone-row">
+                <div class="control-group">
+                    <span class="selector-label">Tuning</span>
+                    <div class="switch-ui" id="tuningSwitch">
+                        <button data-val="just" class="active">JUST</button>
+                        <button data-val="equal">ET</button>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <span class="selector-label">Wave</span>
+                    <div class="switch-ui" id="colorSwitch">
+                        <button data-val="sine" class="active">SINE</button>
+                        <button data-val="triangle">TRI</button>
+                    </div>
                 </div>
             </div>
-            <div class="control-group"><span class="selector-label">Wave</span>
-                <div class="switch-ui" id="colorSwitch">
-                    <button data-val="sine" class="active">SINE</button>
-                    <button data-val="triangle">TRI</button>
-                </div>
-            </div>
-            <div style="display:flex;gap:8px;">
-                <button id="droneToggle" class="main-action">🎵 Start Drone</button>
-                <button id="droneClear" class="secondary">🧹 Clear</button>
+            <div class="drone-row">
+                <button id="droneToggle" class="main-action" style="flex:1;">🎵 Start Drone</button>
+                <button id="droneClear" class="secondary" style="flex:1;">🧹 Clear</button>
             </div>
         </div>
         <div>
@@ -240,56 +265,58 @@
             </div>
         </div>
         <div class="metro-controls">
-            <div>
-                <span class="selector-label">Time Signature</span>
-                <div class="ts-spinners">
-                    <div class="ts-spinner-group">
-                        <span class="selector-label" style="font-size:0.65rem;">Beats (N)</span>
-                        <div class="stepper">
-                            <button class="adj-btn" id="tsNMinus">−</button>
-                            <span class="stepper-val" id="tsNVal">4</span>
-                            <button class="adj-btn" id="tsNPlus">+</button>
+            <div class="settings-bar">
+                <div>
+                    <span class="selector-label">Time Signature</span>
+                    <div class="ts-spinners">
+                        <div class="ts-spinner-group">
+                            <span class="selector-label" style="font-size:0.65rem;">Beats (N)</span>
+                            <div class="stepper">
+                                <button class="adj-btn" id="tsNMinus">−</button>
+                                <span class="stepper-val" id="tsNVal">4</span>
+                                <button class="adj-btn" id="tsNPlus">+</button>
+                            </div>
+                        </div>
+                        <div class="ts-spinner-group">
+                            <span class="selector-label" style="font-size:0.65rem;">Note value (D)</span>
+                            <div class="stepper">
+                                <button class="adj-btn" id="tsDMinus">−</button>
+                                <span class="stepper-val" id="tsDVal">4</span>
+                                <button class="adj-btn" id="tsDPlus">+</button>
+                            </div>
                         </div>
                     </div>
-                    <div class="ts-spinner-group">
-                        <span class="selector-label" style="font-size:0.65rem;">Note value (D)</span>
-                        <div class="stepper">
-                            <button class="adj-btn" id="tsDMinus">−</button>
-                            <span class="stepper-val" id="tsDVal">4</span>
-                            <button class="adj-btn" id="tsDPlus">+</button>
-                        </div>
+                    <div id="beatGroupEditor" class="beat-group-editor"></div>
+                    <div style="font-size:0.62rem;color:var(--text-muted);margin-top:3px;">Tap between beats to merge/split groups</div>
+                </div>
+                <div>
+                    <span class="selector-label">Subdivision</span>
+                    <div class="seg-ctrl" id="subdivCtrl">
+                        <button data-val="1" class="active">♩ Beat</button>
+                        <button data-val="2">♪ 8th</button>
+                        <button data-val="3">♩³ Trip</button>
+                        <button data-val="4">♬ 16th</button>
                     </div>
                 </div>
-                <div id="beatGroupEditor" class="beat-group-editor"></div>
-                <div style="font-size:0.62rem;color:var(--text-muted);margin-top:3px;">Tap between beats to merge/split groups</div>
-            </div>
-            <div>
-                <span class="selector-label">Subdivision</span>
-                <div class="seg-ctrl" id="subdivCtrl">
-                    <button data-val="1" class="active">♩ Beat</button>
-                    <button data-val="2">♪ 8th</button>
-                    <button data-val="3">♩³ Trip</button>
-                    <button data-val="4">♬ 16th</button>
+                <div>
+                    <span class="selector-label">Click Sound</span>
+                    <div class="seg-ctrl" id="clickSoundCtrl">
+                        <button data-val="clave" class="active">Clave</button>
+                        <button data-val="click">Click</button>
+                        <button data-val="rim">Rim</button>
+                        <button data-val="cowbell">Cowbell</button>
+                    </div>
                 </div>
-            </div>
-            <div>
-                <span class="selector-label">Click Sound</span>
-                <div class="seg-ctrl" id="clickSoundCtrl">
-                    <button data-val="clave" class="active">Clave</button>
-                    <button data-val="click">Click</button>
-                    <button data-val="rim">Rim</button>
-                    <button data-val="cowbell">Cowbell</button>
+                <div id="metro-vol-row">
+                    <span class="selector-label">Volume</span>
+                    <div class="vol-row"><span style="font-size:0.85rem;">🔇</span><input type="range" id="metroVolume" min="0" max="1" step="0.05" value="0.7"><span style="font-size:0.85rem;">🔊</span></div>
                 </div>
-            </div>
-            <div id="metro-vol-row">
-                <span class="selector-label">Volume</span>
-                <div class="vol-row"><span style="font-size:0.85rem;">🔇</span><input type="range" id="metroVolume" min="0" max="1" step="0.05" value="0.7"><span style="font-size:0.85rem;">🔊</span></div>
-            </div>
-            <div>
-                <span class="selector-label">Output</span>
-                <div class="mode-row">
-                    <button id="soundToggle" class="btn-toggle" style="flex:1;">🔔 Sound</button>
-                    <button id="lightToggle" class="btn-toggle" style="flex:1;">⚡ Light</button>
+                <div>
+                    <span class="selector-label">Output</span>
+                    <div class="mode-row">
+                        <button id="soundToggle" class="btn-toggle" style="flex:1;">🔔 Sound</button>
+                        <button id="lightToggle" class="btn-toggle" style="flex:1;">⚡ Light</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -849,7 +876,7 @@ function sched() {
             if(pulse.isGroupBeat) playBeat(nextBeat, isDownbeat);
             else                  playSubdiv(nextBeat);
         }
-        if(metroLight) triggerFlash(nextBeat, isDownbeat);
+        if(metroLight && pulse.isGroupBeat) triggerFlash(nextBeat, isDownbeat);
         pulseIndex++;
         nextBeat += pulse.subDur;
     }
