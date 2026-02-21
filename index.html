@@ -56,7 +56,7 @@
         .wheel-outer { position: relative; width: 200px; height: 200px; user-select: none; touch-action: none; }
         #wheel { width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle,#1e293b 30%,#0f172a 100%); border: 12px solid var(--border); cursor: grab; transition: border-color 0.06s, box-shadow 0.06s; }
         #wheel.beat-flash { border-color: var(--primary); box-shadow: 0 0 22px rgba(34,197,94,0.5); }
-        #wheel::after { content:''; position: absolute; top: 11px; left: 50%; transform: translateX(-50%); width: 12px; height: 12px; background: var(--primary); border-radius: 50%; }
+        #wheel::after { content:''; position: absolute; top: 2px; left: 50%; transform: translateX(-50%); width: 20px; height: 20px; background: var(--primary); border-radius: 50%; }
         .bpm-container { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); text-align: center; width: 130px; pointer-events: none; z-index: 2; }
         #bpm-display { font-size: 3.2rem; font-weight: 900; color: var(--text); cursor: pointer; line-height: 1; pointer-events: auto; }
         #bpm-input { width: 100%; background: transparent; border: none; color: var(--primary); font-size: 3.2rem; font-weight: 900; text-align: center; display: none; outline: none; pointer-events: auto; }
@@ -78,6 +78,11 @@
         .seg-ctrl button:active { opacity: 0.75; }
         .seg-ctrl button.active { background: var(--primary); color: #fff; }
         .mode-row { display: flex; gap: 8px; }
+
+        /* VIEWPORT FLASH */
+        #viewport-flash { position: fixed; inset: 0; pointer-events: none; z-index: 9999; border: 0px solid var(--primary); transition: border-width 0.04s ease-out, opacity 0.04s ease-out; opacity: 0; }
+        #viewport-flash.beat-flash { border-width: 12px; opacity: 1; }
+        #viewport-flash.beat-flash.accent { border-width: 18px; }
 
         /* RECORDER */
         .recording-item { background: var(--surface); border: 1px solid var(--border); padding: 1.2rem; margin-bottom: 1rem; border-radius: 14px; }
@@ -518,8 +523,8 @@ detailsBtn.onclick = () => {
 let bpm         = prefs.bpm         ?? 120;
 let timeSig     = prefs.timeSig     ?? 4;
 let subdivision = prefs.subdivision ?? 1;
-let metroSound  = prefs.metroSound  ?? false;
-let metroLight  = prefs.metroLight  ?? false;
+let metroSound  = prefs.metroSound  ?? true;
+let metroLight  = prefs.metroLight  ?? true;
 let metroVolume = prefs.metroVolume ?? 0.7;
 let clickSound  = prefs.clickSound  ?? 'clave';
 let metroRunning=false, nextBeat=0, schedTimer, beatCount=0;
@@ -687,15 +692,21 @@ function playSubdiv(atTime) {
     o.start(atTime); o.stop(atTime+0.025);
 }
 
+const viewportFlash = document.getElementById('viewport-flash');
 function triggerFlash(atTime, isAccent) {
     const delay = Math.max(0, (atTime-getCtx().currentTime)*1000);
+    const dur = isAccent ? 130 : 80;
     setTimeout(() => {
         wheelEl.classList.add('beat-flash');
         metroCard.classList.add('beat-flash');
+        viewportFlash.classList.add('beat-flash');
+        if(isAccent) viewportFlash.classList.add('accent');
         setTimeout(() => {
             wheelEl.classList.remove('beat-flash');
             metroCard.classList.remove('beat-flash');
-        }, isAccent ? 130 : 80);
+            viewportFlash.classList.remove('beat-flash');
+            viewportFlash.classList.remove('accent');
+        }, dur);
     }, delay);
 }
 
@@ -735,14 +746,22 @@ function stopMetro() {
     metroRunning=false; clearTimeout(schedTimer);
     wheelEl.classList.remove('beat-flash');
     metroCard.classList.remove('beat-flash');
+    viewportFlash.classList.remove('beat-flash');
+    viewportFlash.classList.remove('accent');
     updateMetroBtn();
 }
 // Restore output toggle states
 if(metroSound) document.getElementById('soundToggle').classList.add('active');
 if(metroLight) document.getElementById('lightToggle').classList.add('active');
 
-document.getElementById('soundToggle').onclick = function() { metroSound=!metroSound; this.classList.toggle('active',metroSound); savePrefs(); };
-document.getElementById('lightToggle').onclick = function() { metroLight=!metroLight; this.classList.toggle('active',metroLight); savePrefs(); };
+document.getElementById('soundToggle').onclick = function() {
+    if(metroSound && !metroLight) return; // can't turn off last active mode
+    metroSound=!metroSound; this.classList.toggle('active',metroSound); savePrefs();
+};
+document.getElementById('lightToggle').onclick = function() {
+    if(metroLight && !metroSound) return; // can't turn off last active mode
+    metroLight=!metroLight; this.classList.toggle('active',metroLight); savePrefs();
+};
 document.getElementById('metroStartBtn').onclick = function() {
     if(metroRunning) { stopMetro(); }
     else { startMetro(); }
@@ -780,7 +799,7 @@ document.getElementById('tapBtn').onclick = () => {
         const angle=getAngle(e);
         let d=angle-lastAngle; lastAngle=angle;
         if(d>180)d-=360; if(d<-180)d+=360;
-        fracBpm+=d/3;
+        fracBpm+=d/1.5;
         const whole=Math.trunc(fracBpm);
         if(whole!==0){ updateBPMDisplay(bpm+whole); fracBpm-=whole; }
     };
@@ -978,5 +997,6 @@ initDB().then(()=>{
     renderMemos();
 });
 </script>
+<div id="viewport-flash"></div>
 </body>
 </html>
