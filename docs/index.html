@@ -427,6 +427,21 @@ const unlockAudio = () => {
 document.addEventListener('touchstart', unlockAudio, { once: true });
 document.addEventListener('click', unlockAudio, { once: true });
 
+// ─── SCREEN WAKE LOCK ────────────────────────────────────────
+// Prevents iOS/Android from dimming or locking the screen while
+// the drone, metronome, or recorder is active.
+let wakeLock = null;
+async function updateWakeLock() {
+    const audioActive = droneState?.running || metroRunning || recorder?.state === 'recording' || tunerRunning;
+    if (audioActive && !wakeLock && 'wakeLock' in navigator) {
+        try { wakeLock = await navigator.wakeLock.request('screen'); }
+        catch(e) { /* permission denied or not supported — silently ignore */ }
+    } else if (!audioActive && wakeLock) {
+        try { wakeLock.release(); } catch(e) {}
+        wakeLock = null;
+    }
+}
+
 // ─── AUDIO CONTEXT ───────────────────────────────────────────
 let audioCtx, db;
 const getCtx = () => {
@@ -466,6 +481,9 @@ document.addEventListener('visibilitychange', () => {
             nextBeat = audioCtx.currentTime;
             sched();
         }
+
+        // Wake lock is released automatically when the page is hidden; re-acquire it.
+        updateWakeLock();
     });
 });
 
@@ -550,6 +568,7 @@ function updateDroneDebug() {
 }
 
 function startDrone() {
+    updateWakeLock();
     const ctx = getCtx();
     const rootFreq = (refA * Math.pow(2,(droneState.root-9)/12)) * Math.pow(2,droneState.octave-4);
     const master = getDroneMaster();
@@ -574,6 +593,7 @@ const stopDrone = () => {
         setTimeout(() => { try { n.osc.stop(); } catch(e){} }, 150);
     });
     activeOscs = [];
+    updateWakeLock();
 };
 
 const droneSync = () => { updateDroneDebug(); if(droneState.running){ stopDrone(); startDrone(); } };
@@ -955,6 +975,7 @@ function startMetro() {
     buildSchedule();
     nextBeat=getCtx().currentTime; sched();
     updateMetroBtn();
+    updateWakeLock();
 }
 function stopMetro() {
     if(!metroRunning) return;
@@ -964,6 +985,7 @@ function stopMetro() {
     viewportFlash.classList.remove('beat-flash');
     viewportFlash.classList.remove('accent');
     updateMetroBtn();
+    updateWakeLock();
 }
 // Restore output toggle states
 if(metroSound) document.getElementById('soundToggle').classList.add('active');
@@ -1089,6 +1111,7 @@ document.getElementById('recordToggle').onclick = async function() {
         recorder.stop(); stopLiveWaveform();
         this.textContent='🎙️ Start Recording'; this.classList.remove('is-active');
         document.getElementById('rec-status').textContent='';
+        updateWakeLock();
         return;
     }
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
@@ -1116,6 +1139,7 @@ document.getElementById('recordToggle').onclick = async function() {
     recorder.start(250);
     this.textContent='⏹️ Stop Recording'; this.classList.add('is-active');
     document.getElementById('rec-status').textContent='● Recording...';
+    updateWakeLock();
 };
 
 function saveMemoName(m, name) {
@@ -1409,6 +1433,7 @@ async function startTuner() {
     tunerRunning = true;
     tunerUpdateBtn();
     tunerTick();
+    updateWakeLock();
 }
 
 function stopTuner() {
@@ -1425,6 +1450,7 @@ function stopTuner() {
     tunerUpdateBtn();
     document.getElementById('tunerStatus').textContent = '';
     document.getElementById('tunerStatus').className   = 'tuner-status';
+    updateWakeLock();
 }
 
 // Wire up tuner buttons
