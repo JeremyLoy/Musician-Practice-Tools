@@ -20,9 +20,16 @@ When using the MCP browser, a local server is running at `http://localhost:8000`
 ## File Structure
 
 ```
-docs/index.html      — entire app (~1170 lines): HTML + CSS + JS inline
-docs/dictionary.js   — ES module export, ~350 musical terms, ~375 lines
-scripts/bake_dict.py — dev tool: regenerates normTerm/normDef fields in dictionary.js
+docs/index.html        — app shell: HTML + PWA meta tags
+docs/style.css         — all CSS
+docs/app.js            — all JavaScript (~1140 lines)
+docs/dictionary.js     — ES module export, ~350 musical terms, ~375 lines
+docs/manifest.json     — PWA manifest (name, icons, display mode)
+docs/sw.js             — service worker (cache-first offline strategy)
+docs/wavesurfer.min.js — WaveSurfer.js v7 bundled locally (do not CDN-ify)
+docs/icon-192.png      — home screen icon (192×192)
+docs/icon-512.png      — home screen icon (512×512)
+scripts/bake_dict.py   — dev tool: regenerates normTerm/normDef fields in dictionary.js
 ```
 
 ## Architecture
@@ -79,7 +86,7 @@ initDB() → updateBPM(bpm) [calls buildSchedule()] → droneSync() → renderMe
 - **State first, then UI**: mutate state variables, then call the reconciliation function (e.g., `droneSync()`, `updateBPMDisplay()`), which also calls `savePrefs()`.
 - **Audio nodes are ephemeral**: oscillators and sound nodes are created fresh for each note/beat and disconnected when done — never reused.
 - **iOS compatibility is intentional**: the `timeslice=250` in MediaRecorder, the silent MP3 unlock, MediaElement backend for WaveSurfer, and MIME type detection are all deliberate iOS workarounds — don't remove them.
-- **No external frameworks** — vanilla JS throughout; WaveSurfer.js@7 (unpkg CDN) is the only dependency.
+- **No external frameworks** — vanilla JS throughout; WaveSurfer.js@7 is bundled locally at `docs/wavesurfer.min.js` (do not replace with a CDN link — offline PWA support depends on it).
 - **CSS scoping**: `.drone-row .control-group .stepper` and `.ts-spinner-group .stepper` are intentionally scoped to avoid conflicting with each other. The base `.stepper` styles the drone machine pill; the scoped rules adjust the metronome spinners. Be careful adding new `.stepper` rules.
 - **`droneState.color`** holds the waveform type (sine/triangle) — named "color" for historical reasons. Maps to `OscillatorNode.type`.
 - **Memo rendering**: `renderMemos()` always revokes all existing blob URLs before re-rendering to prevent memory leaks.
@@ -109,3 +116,16 @@ Before considering any UI change done, verify at **both** of these sizes using t
    - No unexpected stretching or collapsing
 
 Restore to desktop size after testing.
+
+## PWA: Deploying Updates
+
+This app is a PWA with a service worker that caches all files for offline use. **Whenever you deploy any change to `docs/`**, you must also bump the cache version in `docs/sw.js`:
+
+```js
+// docs/sw.js — change this whenever any file in docs/ changes
+const CACHE_VERSION = 'toolkit-v1';  // → 'toolkit-v2', 'toolkit-v3', etc.
+```
+
+**Why this matters:** The service worker serves all files from cache. Without bumping the version, users will receive stale cached files even after a deploy. Bumping the version causes the browser to detect `sw.js` changed, download all assets fresh, and delete the old cache.
+
+**Rule:** one PR / one deploy = one version bump. Also add the new asset to the `ASSETS` array in `sw.js` if you add a new file to `docs/`.

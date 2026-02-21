@@ -3,8 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- App identity -->
     <title>Musician's Practice Toolkit</title>
-    <script src="https://unpkg.com/wavesurfer.js@7"></script>
+    <meta name="description" content="Drone machine, metronome, chromatic tuner, audio memos and musical dictionary. Works offline.">
+
+    <!-- PWA: tells the browser this app is installable -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#22c55e">
+
+    <!-- iOS-specific PWA settings (Safari ignores the manifest for these) -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Toolkit">
+    <link rel="apple-touch-icon" href="./icon-192.png">
+
+    <!-- WaveSurfer.js — local copy for guaranteed offline availability -->
+    <script src="./wavesurfer.min.js"></script>
+
     <link rel="stylesheet" href="style.css">
 </head>
 <body>

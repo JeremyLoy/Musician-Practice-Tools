@@ -1130,3 +1130,14 @@ initDB().then(()=>{
     droneSync();
     renderMemos();
 });
+
+// ─── SERVICE WORKER REGISTRATION ─────────────────────────────────────────────
+// Registers the service worker so the app works offline and can be installed.
+// Runs on 'load' so SW registration doesn't compete with audio/UI startup work.
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js', { scope: './' })
+            .then(reg => reg.update())
+            .catch(err => console.warn('Service worker registration failed:', err));
+    });
+}
