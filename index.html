@@ -799,7 +799,7 @@ document.getElementById('tapBtn').onclick = () => {
 })();
 
 // ─── RECORDER ────────────────────────────────────────────────
-let recorder, chunks=[], liveAnimFrame=null, liveAnalyser=null;
+let recorder, chunks=[], liveAnimFrame=null, liveAnalyser=null, memoUrls=[];
 
 // ── Pick the best supported MIME type for this browser ──────────────────
 // iOS Safari only supports audio/mp4; Chrome/Firefox prefer audio/webm
@@ -891,6 +891,7 @@ function saveMemoName(m, name) {
 }
 
 function renderMemos() {
+    memoUrls.forEach(u => URL.revokeObjectURL(u)); memoUrls=[];
     const list=document.getElementById('memoList'); list.innerHTML='';
     db.transaction('memos').objectStore('memos').getAll().onsuccess=e=>{
         e.target.result.sort((a,b)=>b.ts-a.ts).forEach(m=>{
@@ -898,7 +899,7 @@ function renderMemos() {
             const ext=mimeToExt(mime);
             // Create a correctly-typed blob URL — critical for iOS to decode it
             const typedBlob=new Blob([m.blob],{type:mime});
-            const url=URL.createObjectURL(typedBlob);
+            const url=URL.createObjectURL(typedBlob); memoUrls.push(url);
             const label=m.name||`Memo — ${new Date(m.ts).toLocaleString()}`;
             const d=document.createElement('div'); d.className='recording-item';
             d.innerHTML=`
