@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## TODO Tracking
+
+When completing a task from `TODO.md`, move it from the `- [ ]` list to a `## DONE` section at the bottom of that file, changing the checkbox to `- [x]`.
+
 ## Target Platform
 
 **Primary users are musicians on mobile and tablet touch devices** (iPhone, iPad, Android). Desktop is supported but secondary. Every UI decision should be evaluated against a phone-sized screen first.
@@ -17,6 +21,10 @@ Open `docs/index.html` directly in a browser — no build step, no package manag
 
 When using the MCP browser, a local server is running at `http://localhost:8000`.
 
+## JavaScript Runtime
+
+Use **bun** instead of node for any JS execution on the command line (e.g. `bun script.js`, `bun --input-type=module`). Node is not installed in this environment.
+
 ## File Structure
 
 ```
@@ -24,6 +32,7 @@ docs/index.html        — app shell: HTML + PWA meta tags
 docs/style.css         — all CSS
 docs/app.js            — all JavaScript (~1140 lines)
 docs/dictionary.js     — ES module export, ~350 musical terms, ~375 lines
+docs/dict.js           — Musical Dictionary module (search, render)
 docs/manifest.json     — PWA manifest (name, icons, display mode)
 docs/sw.js             — service worker (cache-first offline strategy)
 docs/wavesurfer.min.js — WaveSurfer.js v7 bundled locally (do not CDN-ify)
@@ -83,6 +92,7 @@ initDB() → updateBPM(bpm) [calls buildSchedule()] → droneSync() → renderMe
 
 ## Key Patterns
 
+- **Script loading**: Every `<script>` tag must include either `defer` or `type="module"`. No synchronous (blocking) script tags.
 - **State first, then UI**: mutate state variables, then call the reconciliation function (e.g., `droneSync()`, `updateBPMDisplay()`), which also calls `savePrefs()`.
 - **Audio nodes are ephemeral**: oscillators and sound nodes are created fresh for each note/beat and disconnected when done — never reused.
 - **iOS compatibility is intentional**: the `timeslice=250` in MediaRecorder, the silent MP3 unlock, MediaElement backend for WaveSurfer, and MIME type detection are all deliberate iOS workarounds — don't remove them.

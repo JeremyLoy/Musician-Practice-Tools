@@ -10,7 +10,7 @@
 //   IMPORTANT: Always bump CACHE_VERSION when deploying — without this, users
 //   will keep receiving stale cached files indefinitely.
 
-const CACHE_VERSION = 'toolkit-v1';
+const CACHE_VERSION = 'toolkit-v2';
 
 // Every file the app needs to work offline.
 // If you add a new file to docs/, add it to this list too.
@@ -20,6 +20,7 @@ const ASSETS = [
   './style.css',
   './app.js',
   './dictionary.js',
+  './dict.js',
   './wavesurfer.min.js',
   './manifest.json',
   './icon-192.png',
