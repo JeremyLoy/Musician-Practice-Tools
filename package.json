@@ -1,0 +1,7 @@
+{
+  "name": "musicians-toolkit",
+  "private": true,
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

@@ -5,8 +5,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /mnt/d/project && ~/.bun/bin/bun test",
-            "timeout": 60,
+            "command": "cd /mnt/d/project && ~/.bun/bin/bun test && ~/.bun/bin/bun x playwright test",
+            "timeout": 120,
             "statusMessage": "Running tests..."
           }
         ]

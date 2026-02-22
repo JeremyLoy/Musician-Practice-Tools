@@ -114,16 +114,36 @@ Single breakpoint at `max-width: 600px`. At this width:
 
 ## Testing
 
-Run the test suite with:
+### Unit Tests (Bun)
 
     bun test
 
-**Tests must pass before every commit, push, or task sign-off.**
-A Claude Stop hook enforces this automatically — Claude cannot finish
-a response if `bun test` exits non-zero.
+Tests live in `tests/`. Add unit tests here for new pure functions or data transforms.
 
-When adding new testable logic (pure functions, data transforms),
-add corresponding tests in `tests/`.
+### End-to-End Tests (Playwright)
+
+    bun x playwright test
+
+Tests live in `e2e/`. Uses Chromium. Expects the app at `http://localhost:8000`. If that
+server isn't running, Playwright starts `python3 -m http.server 8000 --directory docs`
+automatically.
+
+**One-time setup** (after cloning or after deleting `node_modules`):
+
+    ~/.bun/bin/bun install
+    ~/.bun/bin/bun x playwright install chromium
+
+### Stop Hook Enforcement
+
+**All tests must pass before every commit, push, or task sign-off.**
+The Claude Stop hook runs both suites automatically:
+
+    bun test && bun x playwright test
+
+Claude cannot finish a response if either suite exits non-zero.
+
+When adding new testable logic (pure functions, data transforms), add tests in `tests/`.
+When adding new UI features, add e2e coverage in `e2e/`.
 
 ## Self-Review Checklist
 
