@@ -17,7 +17,7 @@ When completing a task from `TODO.md`, move it from the `- [ ]` list to a `## DO
 
 ## Running the App
 
-Open `docs/index.html` directly in a browser — no build step, no package manager, no server required. There are no tests or linting tools.
+Open `docs/index.html` directly in a browser — no build step, no package manager, no server required.
 
 When using the MCP browser, a local server is running at `http://localhost:8000`.
 
@@ -39,6 +39,7 @@ docs/wavesurfer.min.js — WaveSurfer.js v7 bundled locally (do not CDN-ify)
 docs/icon-192.png      — home screen icon (192×192)
 docs/icon-512.png      — home screen icon (512×512)
 scripts/bake_dict.py   — dev tool: regenerates normTerm/normDef fields in dictionary.js
+tests/dict.test.js     — Bun test suite for dict.js pure functions and dictionary data
 ```
 
 ## Architecture
@@ -110,6 +111,19 @@ Single breakpoint at `max-width: 600px`. At this width:
 - `.wheel-outer` shrinks to 160×160px
 - `.metro-controls` goes full-width
 - `.card` padding reduces to `1rem`
+
+## Testing
+
+Run the test suite with:
+
+    bun test
+
+**Tests must pass before every commit, push, or task sign-off.**
+A Claude Stop hook enforces this automatically — Claude cannot finish
+a response if `bun test` exits non-zero.
+
+When adding new testable logic (pure functions, data transforms),
+add corresponding tests in `tests/`.
 
 ## Self-Review Checklist
 

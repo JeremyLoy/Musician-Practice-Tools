@@ -1,10 +1,10 @@
 import DICT from './dictionary.js';
 
-function normStr(s) {
+export function normStr(s) {
     return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
-function fuzzyScore(haystack, needle) {
+export function fuzzyScore(haystack, needle) {
     if (haystack.includes(needle)) return 2 + 1 / (haystack.indexOf(needle) + 1);
     let hi = 0;
     for (let i = 0; i < needle.length; i++) {

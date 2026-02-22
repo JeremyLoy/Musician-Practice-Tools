@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /mnt/d/project && ~/.bun/bin/bun test",
+            "timeout": 60,
+            "statusMessage": "Running tests..."
+          }
+        ]
+      }
+    ]
+  }
+}
