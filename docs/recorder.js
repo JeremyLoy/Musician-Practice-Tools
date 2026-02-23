@@ -22,9 +22,10 @@ export function getAutoName() {
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
-export function initRecorder({ db, getCtx, onRecordingChange }) {
+export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, releaseMicStream }) {
     // All state encapsulated in closure
     let recorder, chunks = [], liveAnimFrame = null, liveAnalyser = null, memoUrls = [];
+    let stream = null;
 
     function drawLiveWaveform() {
         const canvas = document.getElementById('liveWaveform');
@@ -143,14 +144,14 @@ export function initRecorder({ db, getCtx, onRecordingChange }) {
             onRecordingChange(false);
             return;
         }
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream = await getMicStream();
         const autoName = getAutoName();
         const mimeType = getSupportedMimeType();
         const recOpts = mimeType ? { mimeType } : {};
         recorder = new MediaRecorder(stream, recOpts); chunks = [];
         recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
         recorder.onstop = () => {
-            stream.getTracks().forEach(t => t.stop());
+            releaseMicStream();
             const actualMime = recorder.mimeType || mimeType || 'audio/webm';
             const blob = new Blob(chunks, { type: actualMime });
             const item = { id: Date.now().toString(), blob, mimeType: actualMime, ts: Date.now(), name: autoName };

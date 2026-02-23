@@ -5,7 +5,7 @@ import { initMetronome } from './metronome.js';
 
 // ─── VERSION ─────────────────────────────────────────────────
 // Keep in sync with CACHE_VERSION in sw.js. Format: YYYYMMDD-HHMM (24h UTC).
-const APP_VERSION = 'toolkit-20260223-1600';
+const APP_VERSION = 'toolkit-20260223-1830';
 
 // 1. Inline the base64 string directly (No import needed!)
 const silenceDataURI = "data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAADAAAGhgBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVWqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqr///////////////////////////////////////////8AAAA5TEFNRTMuOThyAc0AAAAAAAAAABSAJAiqQgAAgAAABobxtI73AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQxAACFEII9ACZ/sJZwWEoEb8w/////N//////JcxjHjf+7/v/H2PzCCFAiDtGeyBCIx7bJJ1mmEEMy6g8mm2c8nrGABB4h2Mkmn//4z/73u773R5qHHu/j/w7Kxkzh5lWRWdsifCkNAnY9Zc1HvDAhjhSHdFkHFzLmabt/AQxSg2wwzLhHIJOBnAWwVY4zrhIYhhc2kvhYDfQ4hDi2Gmh5KyFn8EcGIrHAngNgIwVIEMf5bzbAiTRoAD///8z/KVhkkWEle6IX+d/z4fvH3BShK1e5kmjkCMoxVmXhd4ROlTKo3iipasvTilY21q19ta30/v/0/idPX1v8PNxJL6ramnOVsdvMv2akO0iSYIzdJFirtzWXCZicS9vHqvSKyqm5XJBdqBwPxyfJdykhWTZ0G0ZyTZGpLKxsNwwoRhsx3tZfhwmeOBVISm3impAC/IT/8hP/EKEM1KMdVdVKM2rHV4x7HVXZvbVVKN/qq8CiV9VL9jjH/6l6qf7MBCjZmOqsAibjcP+qqqv0oxqpa/NVW286hPo1nz2L/h8+jXt//uSxCmDU2IK/ECN98KKtE5IYzNoCfbw+u9i5r8PoadUMFPKqWL4LK3T/LCraMSHGkW4bpLXR/E6LlHOVQxmslKVJ8IULktMN06N0FKCpHCoYsjC4F+Z0NVqdNFoGSTjSiyjzLdnZ2fNqTi2eHKONONKLMPMKLONKLMPQRJGlFxZRoKcJFAYEeIFiRQkUWUeYfef//Ko04soswso40UJAgMw8wosososy0EalnZyjQUGBRQGIFggOWUacWUeYmuadrZziQKKEgQsQLAhQkUJAgMQDghltLO1onp0cpkNInSFMqlYeSEJ5AHsqFdOwy1DA2sRmRJKxdKRfLhfLw5BzUxBTUUzLjk4LjJVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjk4LjJVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7ksRRA8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=";
@@ -64,6 +64,35 @@ const getCtx = () => {
     if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') audioCtx.resume();
     return audioCtx;
 };
+
+// ─── AUDIO SESSION HINT (Safari/iOS 16.4+) ──────────────────
+// Tells the OS this page does simultaneous playback + recording.
+// Improves iOS audio routing when drone/metronome play alongside
+// the tuner or recorder mic. No-op on browsers without the API.
+if (navigator.audioSession) {
+    navigator.audioSession.type = 'play-and-record';
+}
+
+// ─── SHARED MIC STREAM ──────────────────────────────────────
+// Single getUserMedia({ audio: true }) shared by tuner + recorder.
+// Uses the simple constraint form for iOS Safari compatibility.
+// Only releases the OS mic handle when *both* consumers are idle.
+let sharedMicStream = null;
+
+async function getMicStream() {
+    if (sharedMicStream && sharedMicStream.getTracks().every(t => t.readyState === 'live')) {
+        return sharedMicStream;
+    }
+    sharedMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    return sharedMicStream;
+}
+
+function releaseMicStream() {
+    if (!tunerRunning && !recorderRunning && sharedMicStream) {
+        sharedMicStream.getTracks().forEach(t => t.stop());
+        sharedMicStream = null;
+    }
+}
 
 // When the page becomes visible again after being backgrounded, resume the AudioContext
 // and resync audio. iOS suspends (or interrupts) the context when the app is backgrounded.
@@ -334,7 +363,9 @@ initDB().then(()=>{
     initRecorder({
         db,
         getCtx,
-        onRecordingChange: (v) => { recorderRunning = v; updateWakeLock(); }
+        onRecordingChange: (v) => { recorderRunning = v; updateWakeLock(); },
+        getMicStream,
+        releaseMicStream
     });
     initDict();
     tuner = initTuner({
@@ -345,7 +376,9 @@ initDB().then(()=>{
             document.getElementById('droneRefVal').textContent = newVal;
             droneSync(); savePrefs();
         },
-        onRunningChange: (isRunning) => { tunerRunning = isRunning; updateWakeLock(); }
+        onRunningChange: (isRunning) => { tunerRunning = isRunning; updateWakeLock(); },
+        getMicStream,
+        releaseMicStream
     });
 });
 

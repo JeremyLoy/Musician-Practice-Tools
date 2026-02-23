@@ -91,7 +91,7 @@ function updateBtn(isRunning) {
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
-export function initTuner({ getCtx, getRefA, onRefAChange, onRunningChange }) {
+export function initTuner({ getCtx, getRefA, onRefAChange, onRunningChange, getMicStream, releaseMicStream }) {
     // Closure state
     let running        = false;
     let stream         = null;
@@ -160,9 +160,7 @@ export function initTuner({ getCtx, getRefA, onRefAChange, onRunningChange }) {
         statusEl.textContent = 'Requesting microphone…';
         statusEl.className   = 'tuner-status';
         try {
-            stream = await navigator.mediaDevices.getUserMedia({
-                audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-            });
+            stream = await getMicStream();
         } catch (err) {
             statusEl.textContent = err.name === 'NotAllowedError'
                 ? 'Microphone access denied. Please allow mic access and try again.'
@@ -195,7 +193,8 @@ export function initTuner({ getCtx, getRefA, onRefAChange, onRunningChange }) {
         if (rafId)    { cancelAnimationFrame(rafId); rafId = null; }
         if (source)   { try { source.disconnect(); }   catch(e) {} source = null; }
         if (analyser) { try { analyser.disconnect(); } catch(e) {} analyser = null; }
-        if (stream)   { stream.getTracks().forEach(t => t.stop()); stream = null; }
+        stream = null;
+        releaseMicStream();
         freqBuf = [];
         lastMidi = null;
         candidateMidi = null;
