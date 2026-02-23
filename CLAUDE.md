@@ -30,7 +30,8 @@ Use **bun** instead of node for any JS execution on the command line (e.g. `bun 
 ```
 docs/index.html        — app shell: HTML + PWA meta tags
 docs/style.css         — all CSS
-docs/app.js            — all JavaScript (~1140 lines)
+docs/app.js            — app shell JS: shared infra, drone, init (~360 lines)
+docs/metronome.js      — Metronome module (scheduling, click sounds, UI)
 docs/dictionary.js     — ES module export, ~350 musical terms, ~375 lines
 docs/dict.js           — Musical Dictionary module (search, render)
 docs/manifest.json     — PWA manifest (name, icons, display mode)
@@ -40,6 +41,7 @@ docs/icon-192.png      — home screen icon (192×192)
 docs/icon-512.png      — home screen icon (512×512)
 scripts/bake_dict.py   — dev tool: regenerates normTerm/normDef fields in dictionary.js
 tests/dict.test.js     — Bun test suite for dict.js pure functions and dictionary data
+tests/metronome.test.js — Bun test suite for metronome pure functions
 ```
 
 ## Architecture
@@ -142,8 +144,10 @@ The Claude Stop hook runs both suites automatically:
 
 Claude cannot finish a response if either suite exits non-zero.
 
-When adding new testable logic (pure functions, data transforms), add tests in `tests/`.
-When adding new UI features, add e2e coverage in `e2e/`.
+When adding new features or extracting modules, always add corresponding tests:
+- **Pure functions**: Add unit tests in `tests/` (Bun)
+- **UI interactions**: Add e2e tests in `e2e/` (Playwright)
+- **Existing tests**: Update when modifying behavior covered by existing tests
 
 ## Self-Review Checklist
 

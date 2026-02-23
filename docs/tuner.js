@@ -256,4 +256,6 @@ export function initTuner({ getCtx, getRefA, onRefAChange, onRunningChange }) {
         document.getElementById('tunerRefVal').textContent = newVal;
         onRefAChange(newVal);
     };
+
+    return { stop };
 }

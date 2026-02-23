@@ -1,6 +1,6 @@
 # TODO
 
-- [ ] Split the JS into separate components — dictionary extracted; tuner extracted; drone/metronome/recorder need shared.js first
+- [ ] Split the JS into separate components — dict, tuner, recorder, metronome extracted; drone still needs shared.js
 - [ ] Tuner is not accurate
 - [ ] Tablet mode: 2-3 column layout, rearrange and hide tools
 - [ ] Fullscreen iPhone viewport light doesn't work
@@ -10,4 +10,6 @@
 ## DONE
 
 - [x] Split the JS into separate components — dictionary extracted into dict.js; tuner extracted into tuner.js
+- [x] Extract recorder into recorder.js
+- [x] Extract metronome into metronome.js
 - [x] Add version to footer
