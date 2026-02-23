@@ -166,10 +166,13 @@ Restore to desktop size after testing.
 This app is a PWA with a service worker that caches all files for offline use. **Whenever you deploy any change to `docs/`**, you must also bump the cache version in `docs/sw.js`:
 
 ```js
-// docs/sw.js — change this whenever any file in docs/ changes
-const CACHE_VERSION = 'toolkit-20260222';  // use today's date: YYYYMMDD
+// docs/sw.js
+const CACHE_VERSION = 'toolkit-20260222-1430';  // YYYYMMDD-HHMM (24h UTC)
+
+// docs/app.js
+const APP_VERSION = 'toolkit-20260222-1430';    // must match CACHE_VERSION
 ```
 
-**Why this matters:** The service worker serves all files from cache. Without bumping the version, users will receive stale cached files even after a deploy. Bumping the version causes the browser to detect `sw.js` changed, download all assets fresh, and delete the old cache.
+**Why this matters:** The service worker serves all files from cache. Without bumping the version, users will receive stale cached files even after a deploy. Bumping the version causes the browser to detect `sw.js` changed, download all assets fresh, and delete the old cache. `APP_VERSION` in `app.js` mirrors the same string so the footer always shows which build is running.
 
-**Rule:** one PR / one deploy = one version bump. Use the current date (`YYYYMMDD`) as the version suffix. Also add the new asset to the `ASSETS` array in `sw.js` if you add a new file to `docs/`.
+**Rule:** one deploy = one version bump. Update **both** `CACHE_VERSION` in `sw.js` and `APP_VERSION` in `app.js` to the same `YYYYMMDD-HHMM` (24-hour UTC) timestamp. Also add the new asset to the `ASSETS` array in `sw.js` if you add a new file to `docs/`.

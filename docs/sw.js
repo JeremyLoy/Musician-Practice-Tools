@@ -2,15 +2,15 @@
 //
 // HOW UPDATES WORK:
 //   When you deploy changes to any app file, update CACHE_VERSION below to the
-//   current date (e.g. 'toolkit-20260222'). On the user's next visit, the browser
-//   detects that sw.js changed, installs the new service worker, downloads fresh
-//   copies of all assets, and deletes the old cache. Users get updates
-//   automatically on next page load after closing and reopening the tab.
+//   current date+time (e.g. 'toolkit-20260222-1430'). On the user's next visit,
+//   the browser detects that sw.js changed, installs the new service worker,
+//   downloads fresh copies of all assets, and deletes the old cache. Users get
+//   updates automatically on next page load after closing and reopening the tab.
 //
-//   IMPORTANT: Always bump CACHE_VERSION when deploying — without this, users
-//   will keep receiving stale cached files indefinitely.
+//   IMPORTANT: Also update APP_VERSION in app.js to the same string so the
+//   footer displays the correct version. Always bump both when deploying.
 
-const CACHE_VERSION = 'toolkit-20260222';
+const CACHE_VERSION = 'toolkit-20260223-0133';
 
 // Every file the app needs to work offline.
 // If you add a new file to docs/, add it to this list too.

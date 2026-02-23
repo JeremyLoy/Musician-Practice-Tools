@@ -180,3 +180,13 @@
             /* Drone settings */
             .drone-row { gap: 8px; }
         }
+
+        #app-version-footer {
+            text-align: center;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            opacity: 0.4;
+            padding: 1.5rem 0 0.5rem;
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.5px;
+        }
