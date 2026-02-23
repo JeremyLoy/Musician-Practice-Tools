@@ -167,9 +167,9 @@ This app is a PWA with a service worker that caches all files for offline use. *
 
 ```js
 // docs/sw.js — change this whenever any file in docs/ changes
-const CACHE_VERSION = 'toolkit-v1';  // → 'toolkit-v2', 'toolkit-v3', etc.
+const CACHE_VERSION = 'toolkit-20260222';  // use today's date: YYYYMMDD
 ```
 
 **Why this matters:** The service worker serves all files from cache. Without bumping the version, users will receive stale cached files even after a deploy. Bumping the version causes the browser to detect `sw.js` changed, download all assets fresh, and delete the old cache.
 
-**Rule:** one PR / one deploy = one version bump. Also add the new asset to the `ASSETS` array in `sw.js` if you add a new file to `docs/`.
+**Rule:** one PR / one deploy = one version bump. Use the current date (`YYYYMMDD`) as the version suffix. Also add the new asset to the `ASSETS` array in `sw.js` if you add a new file to `docs/`.

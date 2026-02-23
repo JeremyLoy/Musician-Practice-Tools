@@ -1,4 +1,5 @@
 import { initDict } from './dict.js';
+import { initTuner } from './tuner.js';
 
 // 1. Inline the base64 string directly (No import needed!)
 const silenceDataURI = "data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAADAAAGhgBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVWqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqr///////////////////////////////////////////8AAAA5TEFNRTMuOThyAc0AAAAAAAAAABSAJAiqQgAAgAAABobxtI73AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQxAACFEII9ACZ/sJZwWEoEb8w/////N//////JcxjHjf+7/v/H2PzCCFAiDtGeyBCIx7bJJ1mmEEMy6g8mm2c8nrGABB4h2Mkmn//4z/73u773R5qHHu/j/w7Kxkzh5lWRWdsifCkNAnY9Zc1HvDAhjhSHdFkHFzLmabt/AQxSg2wwzLhHIJOBnAWwVY4zrhIYhhc2kvhYDfQ4hDi2Gmh5KyFn8EcGIrHAngNgIwVIEMf5bzbAiTRoAD///8z/KVhkkWEle6IX+d/z4fvH3BShK1e5kmjkCMoxVmXhd4ROlTKo3iipasvTilY21q19ta30/v/0/idPX1v8PNxJL6ramnOVsdvMv2akO0iSYIzdJFirtzWXCZicS9vHqvSKyqm5XJBdqBwPxyfJdykhWTZ0G0ZyTZGpLKxsNwwoRhsx3tZfhwmeOBVISm3impAC/IT/8hP/EKEM1KMdVdVKM2rHV4x7HVXZvbVVKN/qq8CiV9VL9jjH/6l6qf7MBCjZmOqsAibjcP+qqqv0oxqpa/NVW286hPo1nz2L/h8+jXt//uSxCmDU2IK/ECN98KKtE5IYzNoCfbw+u9i5r8PoadUMFPKqWL4LK3T/LCraMSHGkW4bpLXR/E6LlHOVQxmslKVJ8IULktMN06N0FKCpHCoYsjC4F+Z0NVqdNFoGSTjSiyjzLdnZ2fNqTi2eHKONONKLMPMKLONKLMPQRJGlFxZRoKcJFAYEeIFiRQkUWUeYfef//Ko04soswso40UJAgMw8wosososy0EalnZyjQUGBRQGIFggOWUacWUeYmuadrZziQKKEgQsQLAhQkUJAgMQDghltLO1onp0cpkNInSFMqlYeSEJ5AHsqFdOwy1DA2sRmRJKxdKRfLhfLw5BzUxBTUUzLjk4LjJVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjk4LjJVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7ksRRA8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=";
@@ -838,249 +839,7 @@ window.deleteMemo = id => {
     tx.oncomplete=renderMemos;
 };
 
-// ─── CHROMATIC TUNER ─────────────────────────────────────────
-const TUNER_NOTES = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
-const TUNER_BUF_SIZE  = 8;   // rolling median window (~133 ms @ 60 fps)
-const TUNER_NOTE_HOLD = 3;   // consecutive agreeing medians before note label switches
-let tunerRunning  = false;
-let tunerStream   = null;
-let tunerSource   = null;
-let tunerAnalyser = null;
-let tunerRafId    = null;
-let tunerFreqBuf  = [];      // raw Hz rolling buffer
-let tunerLastMidi = null;    // midi of currently displayed note
-let tunerNoteCandidateMidi  = null;
-let tunerNoteCandidateCount = 0;
-
-function tunerDetectPitch(analyser, sampleRate) {
-    const bufLen = analyser.fftSize;
-    const buf = new Float32Array(bufLen);
-    analyser.getFloatTimeDomainData(buf);
-
-    // RMS silence gate
-    let rms = 0;
-    for (let i = 0; i < bufLen; i++) rms += buf[i] * buf[i];
-    if (Math.sqrt(rms / bufLen) < 0.01) return null;
-
-    // Lag range: 60 Hz – 2000 Hz
-    const minLag = Math.floor(sampleRate / 2000);
-    const maxLag = Math.floor(sampleRate / 60);
-
-    // Normalized autocorrelation (NSDF).
-    // Strategy: compute all NSDF values, find the global maximum, then take the
-    // FIRST local maximum that is at least 80% of that global max. This correctly
-    // picks the fundamental period: the 2nd harmonic produces a larger NSDF peak
-    // at 2× the lag, but the fundamental has the first significant peak.
-    const nsdfVals = new Float32Array(maxLag + 1);
-    for (let lag = minLag; lag <= maxLag; lag++) {
-        let corr = 0, norm = 0;
-        for (let i = 0; i < bufLen - lag; i++) {
-            corr += buf[i] * buf[i + lag];
-            norm += buf[i] * buf[i] + buf[i + lag] * buf[i + lag];
-        }
-        nsdfVals[lag] = norm > 0 ? (2 * corr / norm) : 0;
-    }
-    // Find global max
-    let globalMax = 0;
-    for (let lag = minLag; lag <= maxLag; lag++) if (nsdfVals[lag] > globalMax) globalMax = nsdfVals[lag];
-    if (globalMax < 0.75) return null; // reject low-confidence / silent frames
-
-    // Find the first local maximum >= 80% of globalMax (the fundamental)
-    const threshold = globalMax * 0.8;
-    let bestLag = -1;
-    for (let lag = minLag + 1; lag < maxLag; lag++) {
-        if (nsdfVals[lag] >= threshold &&
-            nsdfVals[lag] >= nsdfVals[lag - 1] &&
-            nsdfVals[lag] >= nsdfVals[lag + 1]) {
-            bestLag = lag;
-            break;
-        }
-    }
-    if (bestLag === -1) return null;
-
-    // Parabolic interpolation using the same NSDF values used to find the peak,
-    // so the interpolated offset is consistent with how bestLag was selected.
-    const y1 = nsdfVals[bestLag - 1];
-    const y2 = nsdfVals[bestLag];
-    const y3 = nsdfVals[bestLag + 1];
-    const denom = 2 * (2 * y2 - y1 - y3);
-    const refined = denom !== 0 ? bestLag + (y1 - y3) / denom : bestLag;
-    return sampleRate / refined;
-}
-
-function tunerFreqToNoteInfo(freq, overrideMidi = null) {
-    const midi       = overrideMidi ?? Math.round(69 + 12 * Math.log2(freq / refA));
-    const noteName   = TUNER_NOTES[((midi % 12) + 12) % 12];
-    const octave     = Math.floor(midi / 12) - 1;
-    const targetFreq = refA * Math.pow(2, (midi - 69) / 12);
-    const cents      = 1200 * Math.log2(freq / targetFreq);
-    return { noteName, octave, cents, midi };
-}
-
-function tunerUpdateDisplay(freq, lockedMidi = null) {
-    const nameEl   = document.getElementById('tunerNoteName');
-    const centsEl  = document.getElementById('tunerCentsDisplay');
-    const fillEl   = document.getElementById('tunerMeterFill');
-
-    if (freq === null) {
-        nameEl.innerHTML = '—';
-        centsEl.textContent = '';
-        centsEl.className = 'tuner-cents';
-        fillEl.style.width = '0%';
-        fillEl.style.left  = '50%';
-        fillEl.className = 'tuner-meter-fill';
-        return;
-    }
-
-    const { noteName, octave, cents } = tunerFreqToNoteInfo(freq, lockedMidi);
-
-    // Note name: letter + optional accidental as <sup> + octave as <sub>
-    const letter     = noteName.replace(/[♯♭]/g, '');
-    const accidental = noteName.match(/[♯♭]/)?.[0] ?? '';
-    nameEl.innerHTML = `${letter}${accidental ? `<sup>${accidental}</sup>` : ''}<sub>${octave}</sub>`;
-
-    // Cents display
-    const cr = Math.round(cents);
-    centsEl.textContent = cr >= 0 ? `+${cr}¢` : `${cr}¢`;
-
-    // Colour class
-    const abs = Math.abs(cents);
-    const col = abs <= 5 ? 'in-tune' : abs <= 20 ? 'near-tune' : 'out-tune';
-    centsEl.className = `tuner-cents ${col}`;
-    fillEl.className  = `tuner-meter-fill ${col}`;
-
-    // Meter fill: centre at 50%, fill extends toward deviation
-    const clamped = Math.max(-50, Math.min(50, cents));
-    const pct     = clamped / 100 * 100; // -50 to +50 as percentage of track width
-    if (cents >= 0) {
-        fillEl.style.left  = '50%';
-        fillEl.style.width = `${pct}%`;
-    } else {
-        fillEl.style.left  = `${50 + pct}%`;
-        fillEl.style.width = `${-pct}%`;
-    }
-}
-
-function tunerTick() {
-    if (!tunerRunning || !tunerAnalyser) return;
-    const raw = tunerDetectPitch(tunerAnalyser, getCtx().sampleRate);
-
-    if (raw === null) {
-        // Silence: flush buffer and clear display
-        tunerFreqBuf = [];
-        tunerLastMidi = null;
-        tunerNoteCandidateMidi = null;
-        tunerNoteCandidateCount = 0;
-        tunerUpdateDisplay(null);
-    } else {
-        // Accumulate into rolling buffer
-        tunerFreqBuf.push(raw);
-        if (tunerFreqBuf.length > TUNER_BUF_SIZE) tunerFreqBuf.shift();
-
-        // Wait for half the buffer to fill before showing anything
-        if (tunerFreqBuf.length >= Math.ceil(TUNER_BUF_SIZE / 2)) {
-            const sorted = [...tunerFreqBuf].sort((a, b) => a - b);
-            const median = sorted[Math.floor(sorted.length / 2)];
-
-            // Hysteresis: only commit to a new note after TUNER_NOTE_HOLD confirmations
-            const { midi } = tunerFreqToNoteInfo(median);
-            if (tunerLastMidi === null) {
-                // First lock — accept immediately
-                tunerLastMidi = midi;
-            } else if (midi !== tunerLastMidi) {
-                if (midi === tunerNoteCandidateMidi) {
-                    tunerNoteCandidateCount++;
-                    if (tunerNoteCandidateCount >= TUNER_NOTE_HOLD) {
-                        tunerLastMidi = midi;
-                        tunerNoteCandidateMidi = null;
-                        tunerNoteCandidateCount = 0;
-                    }
-                } else {
-                    tunerNoteCandidateMidi = midi;
-                    tunerNoteCandidateCount = 1;
-                }
-            }
-
-            tunerUpdateDisplay(median, tunerLastMidi);
-        }
-    }
-
-    tunerRafId = requestAnimationFrame(tunerTick);
-}
-
-function tunerUpdateBtn() {
-    const btn = document.getElementById('tunerToggle');
-    btn.textContent = tunerRunning ? '⏹ Stop Tuner' : '🎤 Start Tuner';
-    btn.classList.toggle('is-active', tunerRunning);
-}
-
-async function startTuner() {
-    const statusEl = document.getElementById('tunerStatus');
-    statusEl.textContent = 'Requesting microphone…';
-    statusEl.className   = 'tuner-status';
-    try {
-        tunerStream = await navigator.mediaDevices.getUserMedia({
-            audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
-        });
-    } catch (err) {
-        statusEl.textContent = err.name === 'NotAllowedError'
-            ? 'Microphone access denied. Please allow mic access and try again.'
-            : `Microphone error: ${err.message}`;
-        statusEl.className = 'tuner-status error';
-        tunerRunning = false;
-        tunerUpdateBtn();
-        return;
-    }
-    const ctx      = getCtx();
-    tunerSource    = ctx.createMediaStreamSource(tunerStream);
-    tunerAnalyser  = ctx.createAnalyser();
-    tunerAnalyser.fftSize = 4096;
-    tunerAnalyser.smoothingTimeConstant = 0;
-    tunerSource.connect(tunerAnalyser);
-    // Not connected to ctx.destination — no audio passthrough / feedback
-    statusEl.textContent = '';
-    tunerRunning = true;
-    tunerUpdateBtn();
-    tunerTick();
-    updateWakeLock();
-}
-
-function stopTuner() {
-    tunerRunning = false;
-    if (tunerRafId)    { cancelAnimationFrame(tunerRafId); tunerRafId = null; }
-    if (tunerSource)   { try { tunerSource.disconnect(); }   catch(e) {} tunerSource = null; }
-    if (tunerAnalyser) { try { tunerAnalyser.disconnect(); } catch(e) {} tunerAnalyser = null; }
-    if (tunerStream)   { tunerStream.getTracks().forEach(t => t.stop()); tunerStream = null; }
-    tunerFreqBuf = [];
-    tunerLastMidi = null;
-    tunerNoteCandidateMidi = null;
-    tunerNoteCandidateCount = 0;
-    tunerUpdateDisplay(null);
-    tunerUpdateBtn();
-    document.getElementById('tunerStatus').textContent = '';
-    document.getElementById('tunerStatus').className   = 'tuner-status';
-    updateWakeLock();
-}
-
-// Wire up tuner buttons
-document.getElementById('tunerToggle').onclick = () => {
-    tunerRunning ? stopTuner() : startTuner();
-};
-
-// Tuner A Ref stepper — syncs shared refA and drone display
-document.getElementById('tunerRefVal').textContent = refA;
-document.getElementById('tunerRefMinus').onclick = () => {
-    refA = Math.max(400, refA - 1);
-    document.getElementById('tunerRefVal').textContent  = refA;
-    document.getElementById('droneRefVal').textContent  = refA;
-    droneSync(); savePrefs();
-};
-document.getElementById('tunerRefPlus').onclick = () => {
-    refA = Math.min(480, refA + 1);
-    document.getElementById('tunerRefVal').textContent  = refA;
-    document.getElementById('droneRefVal').textContent  = refA;
-    droneSync(); savePrefs();
-};
+let tunerRunning = false;
 
 // ─── INIT ────────────────────────────────────────────────────
 initDB().then(()=>{
@@ -1088,6 +847,16 @@ initDB().then(()=>{
     droneSync();
     renderMemos();
     initDict();
+    initTuner({
+        getCtx,
+        getRefA: () => refA,
+        onRefAChange: (newVal) => {
+            refA = newVal;
+            document.getElementById('droneRefVal').textContent = newVal;
+            droneSync(); savePrefs();
+        },
+        onRunningChange: (isRunning) => { tunerRunning = isRunning; updateWakeLock(); }
+    });
 });
 
 // ─── SERVICE WORKER REGISTRATION ─────────────────────────────────────────────
