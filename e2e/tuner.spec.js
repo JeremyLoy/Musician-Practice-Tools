@@ -49,28 +49,28 @@ test.describe('Chromatic Tuner – pitch detection accuracy', () => {
         await startAndWait(page, 440.000);
         await expect(page.locator('#tunerNoteName')).toHaveText('A4');
         const cents = await getCents(page);
-        expect(Math.abs(cents)).toBeLessThanOrEqual(10);
+        expect(Math.abs(cents)).toBeLessThanOrEqual(2);
     });
 
     test('detects A3 (220 Hz) with near-zero cents', async ({ page }) => {
         await startAndWait(page, 220.000);
         await expect(page.locator('#tunerNoteName')).toHaveText('A3');
         const cents = await getCents(page);
-        expect(Math.abs(cents)).toBeLessThanOrEqual(10);
+        expect(Math.abs(cents)).toBeLessThanOrEqual(2);
     });
 
     test('detects C4 (261.626 Hz) with near-zero cents', async ({ page }) => {
         await startAndWait(page, 261.626);
         await expect(page.locator('#tunerNoteName')).toHaveText('C4');
         const cents = await getCents(page);
-        expect(Math.abs(cents)).toBeLessThanOrEqual(10);
+        expect(Math.abs(cents)).toBeLessThanOrEqual(2);
     });
 
     test('detects E4 (329.628 Hz) with near-zero cents', async ({ page }) => {
         await startAndWait(page, 329.628);
         await expect(page.locator('#tunerNoteName')).toHaveText('E4');
         const cents = await getCents(page);
-        expect(Math.abs(cents)).toBeLessThanOrEqual(10);
+        expect(Math.abs(cents)).toBeLessThanOrEqual(2);
     });
 
     test('detects A4 sharp +15¢', async ({ page }) => {
@@ -79,7 +79,7 @@ test.describe('Chromatic Tuner – pitch detection accuracy', () => {
         await expect(page.locator('#tunerNoteName')).toHaveText('A4');
         const cents = await getCents(page);
         expect(cents).toBeGreaterThan(0);
-        expect(Math.abs(cents - 15)).toBeLessThanOrEqual(15);
+        expect(Math.abs(cents - 15)).toBeLessThanOrEqual(3);
     });
 
     test('detects A4 flat −20¢', async ({ page }) => {
@@ -88,7 +88,7 @@ test.describe('Chromatic Tuner – pitch detection accuracy', () => {
         await expect(page.locator('#tunerNoteName')).toHaveText('A4');
         const cents = await getCents(page);
         expect(cents).toBeLessThan(0);
-        expect(Math.abs(cents - (-20))).toBeLessThanOrEqual(15);
+        expect(Math.abs(cents - (-20))).toBeLessThanOrEqual(3);
     });
 
     test('detects C4 sharp +30¢', async ({ page }) => {
@@ -97,7 +97,7 @@ test.describe('Chromatic Tuner – pitch detection accuracy', () => {
         await expect(page.locator('#tunerNoteName')).toHaveText('C4');
         const cents = await getCents(page);
         expect(cents).toBeGreaterThan(0);
-        expect(Math.abs(cents - 30)).toBeLessThanOrEqual(15);
+        expect(Math.abs(cents - 30)).toBeLessThanOrEqual(3);
     });
 
     test('detects E4 flat −10¢', async ({ page }) => {
@@ -106,7 +106,7 @@ test.describe('Chromatic Tuner – pitch detection accuracy', () => {
         await expect(page.locator('#tunerNoteName')).toHaveText('E4');
         const cents = await getCents(page);
         expect(cents).toBeLessThan(0);
-        expect(Math.abs(cents - (-10))).toBeLessThanOrEqual(15);
+        expect(Math.abs(cents - (-10))).toBeLessThanOrEqual(3);
     });
 });
 

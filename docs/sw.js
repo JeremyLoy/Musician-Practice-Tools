@@ -10,7 +10,7 @@
 //   IMPORTANT: Also update APP_VERSION in app.js to the same string so the
 //   footer displays the correct version. Always bump both when deploying.
 
-const CACHE_VERSION = 'toolkit-20260223-1500';
+const CACHE_VERSION = 'toolkit-20260223-1600';
 
 // Every file the app needs to work offline.
 // If you add a new file to docs/, add it to this list too.
@@ -25,6 +25,7 @@ const ASSETS = [
   './recorder.js',
   './metronome.js',
   './wavesurfer.min.js',
+  './pitchfinder.min.js',
   './manifest.json',
   './icon-192.png',
   './icon-512.png'

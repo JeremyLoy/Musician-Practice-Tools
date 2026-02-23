@@ -5,60 +5,27 @@ const NOTE_HOLD = 3;   // consecutive agreeing medians before note label switche
 
 // ─── Pure exports (testable in isolation) ────────────────────────────────────
 
+let _yinDetector = null;
+let _yinSampleRate = 0;
+
 export function detectPitch(analyser, sampleRate) {
     const bufLen = analyser.fftSize;
     const buf = new Float32Array(bufLen);
     analyser.getFloatTimeDomainData(buf);
 
-    // RMS silence gate
+    // RMS silence gate (pitchfinder lacks one — keep ours)
     let rms = 0;
     for (let i = 0; i < bufLen; i++) rms += buf[i] * buf[i];
     if (Math.sqrt(rms / bufLen) < 0.01) return null;
 
-    // Lag range: 60 Hz – 2000 Hz
-    const minLag = Math.floor(sampleRate / 2000);
-    const maxLag = Math.floor(sampleRate / 60);
-
-    // Normalized autocorrelation (NSDF).
-    // Strategy: compute all NSDF values, find the global maximum, then take the
-    // FIRST local maximum that is at least 80% of that global max. This correctly
-    // picks the fundamental period: the 2nd harmonic produces a larger NSDF peak
-    // at 2× the lag, but the fundamental has the first significant peak.
-    const nsdfVals = new Float32Array(maxLag + 1);
-    for (let lag = minLag; lag <= maxLag; lag++) {
-        let corr = 0, norm = 0;
-        for (let i = 0; i < bufLen - lag; i++) {
-            corr += buf[i] * buf[i + lag];
-            norm += buf[i] * buf[i] + buf[i + lag] * buf[i + lag];
-        }
-        nsdfVals[lag] = norm > 0 ? (2 * corr / norm) : 0;
+    // Lazy-init YIN detector; recreate if sample rate changes
+    if (!_yinDetector || _yinSampleRate !== sampleRate) {
+        _yinDetector = window.Pitchfinder.YIN({ sampleRate, threshold: 0.15 });
+        _yinSampleRate = sampleRate;
     }
-    // Find global max
-    let globalMax = 0;
-    for (let lag = minLag; lag <= maxLag; lag++) if (nsdfVals[lag] > globalMax) globalMax = nsdfVals[lag];
-    if (globalMax < 0.75) return null; // reject low-confidence / silent frames
 
-    // Find the first local maximum >= 80% of globalMax (the fundamental)
-    const threshold = globalMax * 0.8;
-    let bestLag = -1;
-    for (let lag = minLag + 1; lag < maxLag; lag++) {
-        if (nsdfVals[lag] >= threshold &&
-            nsdfVals[lag] >= nsdfVals[lag - 1] &&
-            nsdfVals[lag] >= nsdfVals[lag + 1]) {
-            bestLag = lag;
-            break;
-        }
-    }
-    if (bestLag === -1) return null;
-
-    // Parabolic interpolation using the same NSDF values used to find the peak,
-    // so the interpolated offset is consistent with how bestLag was selected.
-    const y1 = nsdfVals[bestLag - 1];
-    const y2 = nsdfVals[bestLag];
-    const y3 = nsdfVals[bestLag + 1];
-    const denom = 2 * (2 * y2 - y1 - y3);
-    const refined = denom !== 0 ? bestLag + (y1 - y3) / denom : bestLag;
-    return sampleRate / refined;
+    const freq = _yinDetector(buf);
+    return (freq && freq > 0) ? freq : null;
 }
 
 export function freqToNoteInfo(freq, refA, overrideMidi = null) {

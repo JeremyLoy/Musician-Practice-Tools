@@ -3,5 +3,8 @@
   "private": true,
   "devDependencies": {
     "@playwright/test": "^1.49.0"
+  },
+  "dependencies": {
+    "pitchfinder": "2.3.4"
   }
 }

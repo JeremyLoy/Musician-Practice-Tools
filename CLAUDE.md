@@ -37,9 +37,11 @@ docs/dict.js           — Musical Dictionary module (search, render)
 docs/manifest.json     — PWA manifest (name, icons, display mode)
 docs/sw.js             — service worker (cache-first offline strategy)
 docs/wavesurfer.min.js — WaveSurfer.js v7 bundled locally (do not CDN-ify)
+docs/pitchfinder.min.js — pitchfinder v2.3.4 bundled locally (YIN pitch detection)
 docs/icon-192.png      — home screen icon (192×192)
 docs/icon-512.png      — home screen icon (512×512)
 scripts/bake_dict.py   — dev tool: regenerates normTerm/normDef fields in dictionary.js
+scripts/pitchfinder-entry.js — entry point for rebuilding pitchfinder browser bundle
 tests/dict.test.js     — Bun test suite for dict.js pure functions and dictionary data
 tests/metronome.test.js — Bun test suite for metronome pure functions
 ```

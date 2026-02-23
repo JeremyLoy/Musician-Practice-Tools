@@ -1,4 +1,10 @@
-import { describe, test, expect } from 'bun:test';
+import { describe, test, expect, beforeAll } from 'bun:test';
+import * as Pitchfinder from 'pitchfinder';
+
+// Make the real pitchfinder available as window.Pitchfinder (tuner.js reads it)
+globalThis.window ??= globalThis;
+globalThis.window.Pitchfinder = Pitchfinder;
+
 import { detectPitch, freqToNoteInfo } from '../docs/tuner.js';
 
 // Minimal mock AnalyserNode — provides fftSize and getFloatTimeDomainData
@@ -68,5 +74,31 @@ describe('detectPitch', () => {
         });
         const result = detectPitch(analyser, 44100);
         expect(result).toBeNull();
+    });
+
+    test('detects a 440 Hz sine wave within 1 Hz', () => {
+        const sampleRate = 44100;
+        const freq = 440;
+        const analyser = mockAnalyser(4096, data => {
+            for (let i = 0; i < data.length; i++) {
+                data[i] = 0.5 * Math.sin(2 * Math.PI * freq * i / sampleRate);
+            }
+        });
+        const detected = detectPitch(analyser, sampleRate);
+        expect(detected).not.toBeNull();
+        expect(Math.abs(detected - freq)).toBeLessThan(1);
+    });
+
+    test('detects a 261.63 Hz (C4) sine wave within 1 Hz', () => {
+        const sampleRate = 44100;
+        const freq = 261.63;
+        const analyser = mockAnalyser(4096, data => {
+            for (let i = 0; i < data.length; i++) {
+                data[i] = 0.5 * Math.sin(2 * Math.PI * freq * i / sampleRate);
+            }
+        });
+        const detected = detectPitch(analyser, sampleRate);
+        expect(detected).not.toBeNull();
+        expect(Math.abs(detected - freq)).toBeLessThan(1);
     });
 });
