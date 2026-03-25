@@ -137,6 +137,8 @@ automatically.
     ~/.bun/bin/bun install
     ~/.bun/bin/bun x playwright install chromium
 
+**Always run `~/.bun/bin/bun install` before running any tests** if you haven't already done so in the current session. This ensures `node_modules` exists and dependencies (like `@playwright/test` and `pitchfinder`) are available. Skipping this step will cause test failures with "Cannot find module/package" errors.
+
 ### Stop Hook Enforcement
 
 **All tests must pass before every commit, push, or task sign-off.**
