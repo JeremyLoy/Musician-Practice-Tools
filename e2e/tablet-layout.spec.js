@@ -1,5 +1,33 @@
 import { test, expect } from '@playwright/test';
 
+// Returns cards grouped into col1/col2, each sorted top-to-bottom.
+async function getCardColumns(page) {
+    const positions = await page.locator('.card').evaluateAll(cards =>
+        cards.map(c => {
+            const r = c.getBoundingClientRect();
+            return { id: c.id, left: Math.round(r.left), top: r.top, width: r.width, height: r.height };
+        })
+    );
+    const xValues = [...new Set(positions.map(p => p.left))].sort((a, b) => a - b);
+    expect(xValues.length).toBeGreaterThan(1); // sanity: two columns exist
+    return {
+        col1: positions.filter(p => p.left === xValues[0]).sort((a, b) => a.top - b.top),
+        col2: positions.filter(p => p.left === xValues[xValues.length - 1]).sort((a, b) => a.top - b.top),
+    };
+}
+
+// Drags the handle of srcId to (fraction) down tgtPos, returns before/after order arrays.
+async function drag(page, srcId, tgtPos, yFraction = 0.25) {
+    const handleBox = await page.locator(`#${srcId} .drag-handle`).boundingBox();
+    const before = await page.locator('.card').evaluateAll(cs => cs.map(c => c.id));
+    await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(tgtPos.left + tgtPos.width / 2, tgtPos.top + tgtPos.height * yFraction, { steps: 20 });
+    await page.mouse.up();
+    const after = await page.locator('.card').evaluateAll(cs => cs.map(c => c.id));
+    return { before, after };
+}
+
 test.describe('Tablet 2-column layout', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/');
@@ -14,11 +42,9 @@ test.describe('Tablet 2-column layout', () => {
 
     test('cards occupy two distinct columns at 768px width', async ({ page }) => {
         await page.setViewportSize({ width: 768, height: 1024 });
-        // Collect the left-edge x position of every card
         const xPositions = await page.locator('.card').evaluateAll(cards =>
             [...new Set(cards.map(c => Math.round(c.getBoundingClientRect().left)))]
         );
-        // With CSS columns there must be cards at two different x offsets
         expect(xPositions.length).toBeGreaterThan(1);
     });
 
@@ -27,9 +53,7 @@ test.describe('Tablet 2-column layout', () => {
         const cards = page.locator('.card');
         const firstBox = await cards.nth(0).boundingBox();
         const secondBox = await cards.nth(1).boundingBox();
-        // Single column: both cards start at the same x
         expect(Math.abs(firstBox.x - secondBox.x)).toBeLessThan(5);
-        // Second card is below the first
         expect(secondBox.y).toBeGreaterThan(firstBox.y);
     });
 
@@ -39,40 +63,43 @@ test.describe('Tablet 2-column layout', () => {
         expect(bodyWidth).toBeGreaterThan(860);
     });
 
-    test('drag-to-reorder works across columns at 768px width', async ({ page }) => {
+    // ── Drag across X axis (different columns, similar Y) ──────────────────
+    test('drag-to-reorder: X-axis (col1 top → col2 top)', async ({ page }) => {
         await page.setViewportSize({ width: 768, height: 1024 });
-
-        // Identify which cards are in column 1 vs column 2 by their left-edge x
-        const positions = await page.locator('.card').evaluateAll(cards =>
-            cards.map(c => { const r = c.getBoundingClientRect(); return { id: c.id, left: Math.round(r.left), top: r.top, width: r.width, height: r.height }; })
-        );
-        const xValues = [...new Set(positions.map(p => p.left))].sort((a, b) => a - b);
-        expect(xValues.length).toBeGreaterThan(1); // sanity check: two columns exist
-
-        const col1 = positions.filter(p => p.left === xValues[0]);
-        const col2 = positions.filter(p => p.left === xValues[xValues.length - 1]);
+        const { col1, col2 } = await getCardColumns(page);
         expect(col1.length).toBeGreaterThan(0);
         expect(col2.length).toBeGreaterThan(0);
 
-        // Drag the first card in column 1 to the top of the first card in column 2
-        const srcId = col1[0].id;
-        const tgtPos = col2[0];
-        const srcHandle = page.locator(`#${srcId} .drag-handle`);
-        const handleBox = await srcHandle.boundingBox();
+        const { before, after } = await drag(page, col1[0].id, col2[0], 0.25);
+        expect(after).not.toEqual(before);
+    });
 
-        const initialOrder = await page.locator('.card').evaluateAll(cards => cards.map(c => c.id));
+    // ── Drag across Y axis (same column, different row) ─────────────────────
+    test('drag-to-reorder: Y-axis (col1 top → col1 bottom)', async ({ page }) => {
+        await page.setViewportSize({ width: 768, height: 1024 });
+        const { col1 } = await getCardColumns(page);
+        expect(col1.length).toBeGreaterThan(1); // need ≥2 cards in column 1
 
-        await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
-        await page.mouse.down();
-        await page.mouse.move(
-            tgtPos.left + tgtPos.width / 2,
-            tgtPos.top + tgtPos.height * 0.25,
-            { steps: 15 }
-        );
-        await page.mouse.up();
+        const { before, after } = await drag(page, col1[0].id, col1[col1.length - 1], 0.75);
+        expect(after).not.toEqual(before);
+    });
 
-        const newOrder = await page.locator('.card').evaluateAll(cards => cards.map(c => c.id));
-        expect(newOrder).not.toEqual(initialOrder);
+    // ── Drag diagonally (different column AND different row) ─────────────────
+    test('drag-to-reorder: diagonal (col2 bottom → col1 top)', async ({ page }) => {
+        await page.setViewportSize({ width: 768, height: 1024 });
+        const { col1, col2 } = await getCardColumns(page);
+        expect(col1.length).toBeGreaterThan(0);
+        expect(col2.length).toBeGreaterThan(0);
+
+        // Source: bottom-most card in col2 (high Y, right side).
+        // Target: top-most card in col1 (low Y, left side).
+        // Both X and Y change substantially — a true diagonal motion.
+        const src = col2[col2.length - 1];
+        const tgt = col1[0];
+        expect(Math.abs(src.top - tgt.top)).toBeGreaterThan(10); // confirm actual Y offset
+
+        const { before, after } = await drag(page, src.id, tgt, 0.25);
+        expect(after).not.toEqual(before);
     });
 });
 
