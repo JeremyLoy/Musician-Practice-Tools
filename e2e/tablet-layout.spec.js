@@ -12,15 +12,14 @@ test.describe('Tablet 2-column layout', () => {
         await page.waitForSelector('.card');
     });
 
-    test('cards appear side-by-side at 768px width', async ({ page }) => {
+    test('cards occupy two distinct columns at 768px width', async ({ page }) => {
         await page.setViewportSize({ width: 768, height: 1024 });
-        const cards = page.locator('.card');
-        const firstBox = await cards.nth(0).boundingBox();
-        const secondBox = await cards.nth(1).boundingBox();
-        // In a 2-column grid the second card should be to the right of the first
-        expect(secondBox.x).toBeGreaterThan(firstBox.x);
-        // Both cards should be on the same row (same y position)
-        expect(Math.abs(firstBox.y - secondBox.y)).toBeLessThan(5);
+        // Collect the left-edge x position of every card
+        const xPositions = await page.locator('.card').evaluateAll(cards =>
+            [...new Set(cards.map(c => Math.round(c.getBoundingClientRect().left)))]
+        );
+        // With CSS columns there must be cards at two different x offsets
+        expect(xPositions.length).toBeGreaterThan(1);
     });
 
     test('cards stack in a single column at 390px width', async ({ page }) => {

@@ -6,6 +6,8 @@ const VIEWPORT_H = 844;
 
 test.describe('Card drag-to-reorder', () => {
     test.beforeEach(async ({ page }) => {
+        // Use mobile viewport so cards are in a single column — drag logic relies on Y-only ordering
+        await page.setViewportSize({ width: 390, height: 844 });
         await page.goto('/');
         await page.waitForSelector('.drag-handle');
         // Clear any saved card order so tests start from default
