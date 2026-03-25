@@ -426,19 +426,38 @@ function initCardDrag() {
 
     function getCards() { return [...document.querySelectorAll('.card:not(.dragging)')]; }
 
-    function updateDropIndicators(clientY) {
+    // Find the best drop target using 2D position — works in both single-column
+    // and multi-column (CSS columns) layouts. Tries a direct hit test first, then
+    // falls back to the nearest card by Euclidean distance to its centre.
+    function findDropTarget(clientX, clientY) {
+        const others = getCards();
+        const hit = others.find(c => {
+            const r = c.getBoundingClientRect();
+            return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+        });
+        if (hit) return hit;
+        let nearest = null, minDist = Infinity;
+        others.forEach(c => {
+            const r = c.getBoundingClientRect();
+            const dist = Math.hypot(clientX - (r.left + r.width / 2), clientY - (r.top + r.height / 2));
+            if (dist < minDist) { minDist = dist; nearest = c; }
+        });
+        return nearest;
+    }
+
+    function updateDropIndicators(clientX, clientY) {
         getCards().forEach(c => c.classList.remove('drop-above', 'drop-below'));
-        const target = getCards().find(c => clientY < c.getBoundingClientRect().bottom);
+        const target = findDropTarget(clientX, clientY);
         if (target) {
             const rect = target.getBoundingClientRect();
             target.classList.add(clientY < rect.top + rect.height / 2 ? 'drop-above' : 'drop-below');
         }
     }
 
-    function applyDrop(clientY) {
+    function applyDrop(clientX, clientY) {
         const others = getCards();
         others.forEach(c => c.classList.remove('drop-above', 'drop-below'));
-        const target = others.find(c => clientY < c.getBoundingClientRect().bottom);
+        const target = findDropTarget(clientX, clientY);
         if (target) {
             const rect = target.getBoundingClientRect();
             target.parentNode.insertBefore(dragging, clientY < rect.top + rect.height / 2 ? target : target.nextSibling);
@@ -463,11 +482,11 @@ function initCardDrag() {
         handle.addEventListener('pointermove', e => {
             if (!dragging) return;
             tickAutoScroll(e.clientY);
-            updateDropIndicators(e.clientY);
+            updateDropIndicators(e.clientX, e.clientY);
         });
         handle.addEventListener('pointerup', e => {
             if (!dragging) return;
-            applyDrop(e.clientY);
+            applyDrop(e.clientX, e.clientY);
             endDrag();
             savePrefs();
         });

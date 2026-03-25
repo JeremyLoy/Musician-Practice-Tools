@@ -38,6 +38,42 @@ test.describe('Tablet 2-column layout', () => {
         const bodyWidth = await page.evaluate(() => document.body.offsetWidth);
         expect(bodyWidth).toBeGreaterThan(860);
     });
+
+    test('drag-to-reorder works across columns at 768px width', async ({ page }) => {
+        await page.setViewportSize({ width: 768, height: 1024 });
+
+        // Identify which cards are in column 1 vs column 2 by their left-edge x
+        const positions = await page.locator('.card').evaluateAll(cards =>
+            cards.map(c => { const r = c.getBoundingClientRect(); return { id: c.id, left: Math.round(r.left), top: r.top, width: r.width, height: r.height }; })
+        );
+        const xValues = [...new Set(positions.map(p => p.left))].sort((a, b) => a - b);
+        expect(xValues.length).toBeGreaterThan(1); // sanity check: two columns exist
+
+        const col1 = positions.filter(p => p.left === xValues[0]);
+        const col2 = positions.filter(p => p.left === xValues[xValues.length - 1]);
+        expect(col1.length).toBeGreaterThan(0);
+        expect(col2.length).toBeGreaterThan(0);
+
+        // Drag the first card in column 1 to the top of the first card in column 2
+        const srcId = col1[0].id;
+        const tgtPos = col2[0];
+        const srcHandle = page.locator(`#${srcId} .drag-handle`);
+        const handleBox = await srcHandle.boundingBox();
+
+        const initialOrder = await page.locator('.card').evaluateAll(cards => cards.map(c => c.id));
+
+        await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(
+            tgtPos.left + tgtPos.width / 2,
+            tgtPos.top + tgtPos.height * 0.25,
+            { steps: 15 }
+        );
+        await page.mouse.up();
+
+        const newOrder = await page.locator('.card').evaluateAll(cards => cards.map(c => c.id));
+        expect(newOrder).not.toEqual(initialOrder);
+    });
 });
 
 test.describe('Card collapse', () => {
