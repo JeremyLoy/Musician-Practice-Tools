@@ -6,10 +6,10 @@ const VIEWPORT_H = 844;
 
 test.describe('Card drag-to-reorder', () => {
     test.beforeEach(async ({ page }) => {
-        // Use mobile viewport so cards are in a single column — drag logic relies on Y-only ordering
+        // Use mobile viewport so cards are in a single column for consistent Y-axis drag behaviour
         await page.setViewportSize({ width: 390, height: 844 });
         await page.goto('/');
-        await page.waitForSelector('.drag-handle');
+        await page.waitForSelector('body[data-ready]');
         // Clear any saved card order so tests start from default
         await page.evaluate(() => {
             try {
@@ -20,7 +20,7 @@ test.describe('Card drag-to-reorder', () => {
             } catch {}
         });
         await page.reload();
-        await page.waitForSelector('.drag-handle');
+        await page.waitForSelector('body[data-ready]');
     });
 
     test('default card order is drone, metro, memos, tuner, dict', async ({ page }) => {

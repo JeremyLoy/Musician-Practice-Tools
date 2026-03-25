@@ -31,13 +31,13 @@ async function drag(page, srcId, tgtPos, yFraction = 0.25) {
 test.describe('Tablet 2-column layout', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/');
-        await page.waitForSelector('.card');
+        await page.waitForSelector('body[data-ready]');
         // Clear saved prefs so tests start from a clean state
         await page.evaluate(() => {
             localStorage.removeItem('toolkit_prefs_v2');
         });
         await page.reload();
-        await page.waitForSelector('.card');
+        await page.waitForSelector('body[data-ready]');
     });
 
     test('cards occupy two distinct columns at 768px width', async ({ page }) => {
@@ -106,12 +106,12 @@ test.describe('Tablet 2-column layout', () => {
 test.describe('Card collapse', () => {
     test.beforeEach(async ({ page }) => {
         await page.goto('/');
-        await page.waitForSelector('.card-collapse-btn');
+        await page.waitForSelector('body[data-ready]');
         await page.evaluate(() => {
             localStorage.removeItem('toolkit_prefs_v2');
         });
         await page.reload();
-        await page.waitForSelector('.card-collapse-btn');
+        await page.waitForSelector('body[data-ready]');
     });
 
     test('collapse button is present on each card', async ({ page }) => {
@@ -152,7 +152,7 @@ test.describe('Card collapse', () => {
         await page.locator('#drone-card .card-collapse-btn').click();
         await expect(page.locator('#drone-card')).toHaveClass(/collapsed/);
         await page.reload();
-        await page.waitForSelector('.card-collapse-btn');
+        await page.waitForSelector('body[data-ready]');
         await expect(page.locator('#drone-card')).toHaveClass(/collapsed/);
         await expect(page.locator('#drone-card .drone-section')).toBeHidden();
     });
@@ -163,7 +163,7 @@ test.describe('Card collapse', () => {
         await btn.click();
         await btn.click();
         await page.reload();
-        await page.waitForSelector('.card-collapse-btn');
+        await page.waitForSelector('body[data-ready]');
         await expect(page.locator('#metro-card')).not.toHaveClass(/collapsed/);
     });
 });

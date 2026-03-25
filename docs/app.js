@@ -176,9 +176,6 @@ const droneRatios = [
     }
 }
 
-// Collapse is independent of DB; set up immediately so listeners are ready.
-initCardCollapse();
-
 // ─── DRONE STATE ──────────────────────────────────────────────
 const prefs = loadPrefs();
 let droneState = {
@@ -362,6 +359,9 @@ document.getElementById('app-version-footer').textContent = APP_VERSION;
 
 // ─── INIT ────────────────────────────────────────────────────
 initDB().then(()=>{
+    // Restore collapse state before any savePrefs() call (droneSync etc.) so
+    // the .collapsed classes are in place when those saves capture collapsedCards.
+    initCardCollapse();
     const savedMeter = Object.assign({ groups:[1,1,1,1], denom:4, subdivision:1 }, prefs.meter ?? {});
     if (!Array.isArray(savedMeter.groups)) savedMeter.groups = [1,1,1,1];
     metronome = initMetronome({
@@ -399,6 +399,7 @@ initDB().then(()=>{
         releaseMicStream
     });
     initCardDrag();
+    document.body.dataset.ready = '1';
 });
 
 // ─── CARD DRAG-TO-REORDER ─────────────────────────────────────
