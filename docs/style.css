@@ -159,11 +159,11 @@
         .card.collapsed .card-collapse-btn { transform: rotate(-90deg); }
         .card.collapsed > :not(h2) { display: none; }
 
-        /* RESPONSIVE — tablet: 2-column masonry-style layout */
+        /* RESPONSIVE — tablet: 2-column grid layout (left→right reading order) */
         @media (min-width: 700px) {
-            body { columns: 2; column-gap: 1.5rem; max-width: 1100px; }
-            body > h1, body > #app-version-footer { column-span: all; }
-            .card { break-inside: avoid; }
+            body { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; align-items: start; max-width: 1100px; }
+            body > h1, body > #app-version-footer { grid-column: 1 / -1; }
+            .card { margin-bottom: 0; }
         }
 
         /* RESPONSIVE — mobile/tablet first */

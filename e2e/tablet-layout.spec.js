@@ -70,7 +70,10 @@ test.describe('Tablet 2-column layout', () => {
         expect(col1.length).toBeGreaterThan(0);
         expect(col2.length).toBeGreaterThan(0);
 
-        const { before, after } = await drag(page, col1[0].id, col2[0], 0.25);
+        // Drag col2[0] → col1[0]: inserts the right-column card before the left-column card.
+        // With row-first grid layout col1[0] and col2[0] are in the same row but different
+        // columns, so dragging col2[0] above col1[0] reorders them.
+        const { before, after } = await drag(page, col2[0].id, col1[0], 0.25);
         expect(after).not.toEqual(before);
     });
 
@@ -85,20 +88,20 @@ test.describe('Tablet 2-column layout', () => {
     });
 
     // ── Drag diagonally (different column AND different row) ─────────────────
-    test('drag-to-reorder: diagonal (col2 bottom → col1 top)', async ({ page }) => {
+    test('drag-to-reorder: diagonal (col2 top → col1 bottom)', async ({ page }) => {
         await page.setViewportSize({ width: 768, height: 1024 });
         const { col1, col2 } = await getCardColumns(page);
-        expect(col1.length).toBeGreaterThan(0);
+        expect(col1.length).toBeGreaterThan(1); // need ≥2 cards in col1 for a meaningful row diff
         expect(col2.length).toBeGreaterThan(0);
 
-        // Source: bottom-most card in col2 (high Y, right side).
-        // Target: top-most card in col1 (low Y, left side).
+        // Source: top-most card in col2 (low Y, right side) — always in the viewport.
+        // Target: bottom-most card in col1 (high Y, left side).
         // Both X and Y change substantially — a true diagonal motion.
-        const src = col2[col2.length - 1];
-        const tgt = col1[0];
+        const src = col2[0];
+        const tgt = col1[col1.length - 1];
         expect(Math.abs(src.top - tgt.top)).toBeGreaterThan(10); // confirm actual Y offset
 
-        const { before, after } = await drag(page, src.id, tgt, 0.25);
+        const { before, after } = await drag(page, src.id, tgt, 0.75);
         expect(after).not.toEqual(before);
     });
 });
