@@ -5,7 +5,7 @@ import { initMetronome } from './metronome.js';
 
 // ─── VERSION ─────────────────────────────────────────────────
 // Keep in sync with CACHE_VERSION in sw.js. Format: YYYYMMDD-HHMM (24h UTC).
-const APP_VERSION = 'toolkit-20260325-1200';
+const APP_VERSION = 'toolkit-20260325-1213';
 
 // 1. Inline the base64 string directly (No import needed!)
 const silenceDataURI = "data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAADAAAGhgBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVWqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqr///////////////////////////////////////////8AAAA5TEFNRTMuOThyAc0AAAAAAAAAABSAJAiqQgAAgAAABobxtI73AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQxAACFEII9ACZ/sJZwWEoEb8w/////N//////JcxjHjf+7/v/H2PzCCFAiDtGeyBCIx7bJJ1mmEEMy6g8mm2c8nrGABB4h2Mkmn//4z/73u773R5qHHu/j/w7Kxkzh5lWRWdsifCkNAnY9Zc1HvDAhjhSHdFkHFzLmabt/AQxSg2wwzLhHIJOBnAWwVY4zrhIYhhc2kvhYDfQ4hDi2Gmh5KyFn8EcGIrHAngNgIwVIEMf5bzbAiTRoAD///8z/KVhkkWEle6IX+d/z4fvH3BShK1e5kmjkCMoxVmXhd4ROlTKo3iipasvTilY21q19ta30/v/0/idPX1v8PNxJL6ramnOVsdvMv2akO0iSYIzdJFirtzWXCZicS9vHqvSKyqm5XJBdqBwPxyfJdykhWTZ0G0ZyTZGpLKxsNwwoRhsx3tZfhwmeOBVISm3impAC/IT/8hP/EKEM1KMdVdVKM2rHV4x7HVXZvbVVKN/qq8CiV9VL9jjH/6l6qf7MBCjZmOqsAibjcP+qqqv0oxqpa/NVW286hPo1nz2L/h8+jXt//uSxCmDU2IK/ECN98KKtE5IYzNoCfbw+u9i5r8PoadUMFPKqWL4LK3T/LCraMSHGkW4bpLXR/E6LlHOVQxmslKVJ8IULktMN06N0FKCpHCoYsjC4F+Z0NVqdNFoGSTjSiyjzLdnZ2fNqTi2eHKONONKLMPMKLONKLMPQRJGlFxZRoKcJFAYEeIFiRQkUWUeYfef//Ko04soswso40UJAgMw8wosososy0EalnZyjQUGBRQGIFggOWUacWUeYmuadrZziQKKEgQsQLAhQkUJAgMQDghltLO1onp0cpkNInSFMqlYeSEJ5AHsqFdOwy1DA2sRmRJKxdKRfLhfLw5BzUxBTUUzLjk4LjJVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjk4LjJVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7ksRRA8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=";
@@ -139,6 +139,7 @@ function savePrefs() {
             droneVolume: droneState.volume,
             refA,
             cardOrder: [...document.querySelectorAll('.card')].map(c => c.id),
+            collapsedCards: [...document.querySelectorAll('.card.collapsed')].map(c => c.id),
         }));
     } catch(e) {}
 }
@@ -358,6 +359,9 @@ document.getElementById('app-version-footer').textContent = APP_VERSION;
 
 // ─── INIT ────────────────────────────────────────────────────
 initDB().then(()=>{
+    // Restore collapse state before any savePrefs() call (droneSync etc.) so
+    // the .collapsed classes are in place when those saves capture collapsedCards.
+    initCardCollapse();
     const savedMeter = Object.assign({ groups:[1,1,1,1], denom:4, subdivision:1 }, prefs.meter ?? {});
     if (!Array.isArray(savedMeter.groups)) savedMeter.groups = [1,1,1,1];
     metronome = initMetronome({
@@ -395,6 +399,7 @@ initDB().then(()=>{
         releaseMicStream
     });
     initCardDrag();
+    document.body.dataset.ready = '1';
 });
 
 // ─── CARD DRAG-TO-REORDER ─────────────────────────────────────
@@ -422,19 +427,38 @@ function initCardDrag() {
 
     function getCards() { return [...document.querySelectorAll('.card:not(.dragging)')]; }
 
-    function updateDropIndicators(clientY) {
+    // Find the best drop target using 2D position — works in both single-column
+    // and multi-column (CSS columns) layouts. Tries a direct hit test first, then
+    // falls back to the nearest card by Euclidean distance to its centre.
+    function findDropTarget(clientX, clientY) {
+        const others = getCards();
+        const hit = others.find(c => {
+            const r = c.getBoundingClientRect();
+            return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
+        });
+        if (hit) return hit;
+        let nearest = null, minDist = Infinity;
+        others.forEach(c => {
+            const r = c.getBoundingClientRect();
+            const dist = Math.hypot(clientX - (r.left + r.width / 2), clientY - (r.top + r.height / 2));
+            if (dist < minDist) { minDist = dist; nearest = c; }
+        });
+        return nearest;
+    }
+
+    function updateDropIndicators(clientX, clientY) {
         getCards().forEach(c => c.classList.remove('drop-above', 'drop-below'));
-        const target = getCards().find(c => clientY < c.getBoundingClientRect().bottom);
+        const target = findDropTarget(clientX, clientY);
         if (target) {
             const rect = target.getBoundingClientRect();
             target.classList.add(clientY < rect.top + rect.height / 2 ? 'drop-above' : 'drop-below');
         }
     }
 
-    function applyDrop(clientY) {
+    function applyDrop(clientX, clientY) {
         const others = getCards();
         others.forEach(c => c.classList.remove('drop-above', 'drop-below'));
-        const target = others.find(c => clientY < c.getBoundingClientRect().bottom);
+        const target = findDropTarget(clientX, clientY);
         if (target) {
             const rect = target.getBoundingClientRect();
             target.parentNode.insertBefore(dragging, clientY < rect.top + rect.height / 2 ? target : target.nextSibling);
@@ -459,15 +483,29 @@ function initCardDrag() {
         handle.addEventListener('pointermove', e => {
             if (!dragging) return;
             tickAutoScroll(e.clientY);
-            updateDropIndicators(e.clientY);
+            updateDropIndicators(e.clientX, e.clientY);
         });
         handle.addEventListener('pointerup', e => {
             if (!dragging) return;
-            applyDrop(e.clientY);
+            applyDrop(e.clientX, e.clientY);
             endDrag();
             savePrefs();
         });
         handle.addEventListener('pointercancel', () => endDrag());
+    });
+}
+
+// ─── CARD COLLAPSE ───────────────────────────────────────────────────────────
+function initCardCollapse() {
+    const prefs0 = loadPrefs();
+    const collapsed = new Set(prefs0.collapsedCards ?? []);
+    document.querySelectorAll('.card-collapse-btn').forEach(btn => {
+        const card = btn.closest('.card');
+        if (collapsed.has(card.id)) card.classList.add('collapsed');
+        btn.addEventListener('click', () => {
+            card.classList.toggle('collapsed');
+            savePrefs();
+        });
     });
 }
 

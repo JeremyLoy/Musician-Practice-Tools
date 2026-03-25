@@ -154,6 +154,18 @@
         .stepper-btn:active { background: var(--primary); color: #fff; }
         .stepper-val { color: var(--primary); font-weight: 700; font-size: 0.9rem; min-width: 40px; text-align: center; padding: 0 2px; }
 
+        /* CARD COLLAPSE */
+        .card-collapse-btn { background: none; border: none; color: var(--text-muted); font-size: 1rem; cursor: pointer; min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; transition: transform 0.2s; touch-action: manipulation; }
+        .card.collapsed .card-collapse-btn { transform: rotate(-90deg); }
+        .card.collapsed > :not(h2) { display: none; }
+
+        /* RESPONSIVE — tablet: 2-column masonry-style layout */
+        @media (min-width: 700px) {
+            body { columns: 2; column-gap: 1.5rem; max-width: 1100px; }
+            body > h1, body > #app-version-footer { column-span: all; }
+            .card { break-inside: avoid; }
+        }
+
         /* RESPONSIVE — mobile/tablet first */
         @media (max-width: 600px) {
             body { padding: 1rem 0.75rem; }
