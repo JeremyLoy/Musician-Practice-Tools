@@ -1,5 +1,6 @@
 # TODO
 
+- [ ] Convert to TypeScript
 - [ ] Split the JS into separate components — dict, tuner, recorder, metronome extracted; drone still needs shared.js
 - [ ] Fullscreen iPhone viewport light doesn't work
 - [ ] Audio playback on speakers
