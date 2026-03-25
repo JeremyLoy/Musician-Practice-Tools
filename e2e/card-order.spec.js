@@ -39,6 +39,22 @@ test.describe('Card drag-to-reorder', () => {
         }
     });
 
+    test('tapping drag handle without moving does not rearrange cards', async ({ page }) => {
+        const orderBefore = await page.locator('.card').evaluateAll(cards => cards.map(c => c.id));
+
+        const handle = page.locator('#drone-card .drag-handle');
+        const box = await handle.boundingBox();
+        const cx = box.x + box.width / 2;
+        const cy = box.y + box.height / 2;
+
+        await page.mouse.move(cx, cy);
+        await page.mouse.down();
+        await page.mouse.up();
+
+        const orderAfter = await page.locator('.card').evaluateAll(cards => cards.map(c => c.id));
+        expect(orderAfter).toEqual(orderBefore);
+    });
+
     test('dragging drone card below metronome card reorders them', async ({ page }) => {
         const droneHandle = page.locator('#drone-card .drag-handle');
         const metroCard = page.locator('#metro-card');
