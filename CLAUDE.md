@@ -169,6 +169,20 @@ Before considering any UI change done, verify at **both** of these sizes using t
 
 Restore to desktop size after testing.
 
+## PR Screenshots / Video
+
+**Every PR that changes UI must include screenshots or a screen recording** in the PR description or as a comment. Use Playwright to capture them:
+
+1. Write a script in `e2e/` that launches Chromium at the relevant viewport size(s)
+2. Capture screenshots (`page.screenshot()`) or record video (`context.recordVideo()`) showing the change
+3. Commit the media to `.github/` on the feature branch
+4. Reference them in the PR with raw GitHub URLs, e.g.:
+   ```
+   ![description](https://raw.githubusercontent.com/JeremyLoy/Musician-Practice-Tools/<branch>/.github/<filename>.png)
+   ```
+
+Include **before/after** comparisons when the change modifies existing behavior. For layout or animation changes, prefer video over static screenshots.
+
 ## PWA: Deploying Updates
 
 This app is a PWA with a service worker that caches all files for offline use. **Whenever you deploy any change to `docs/`**, you must also bump the cache version in `docs/sw.js`:

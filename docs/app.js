@@ -5,7 +5,7 @@ import { initMetronome } from './metronome.js';
 
 // ─── VERSION ─────────────────────────────────────────────────
 // Keep in sync with CACHE_VERSION in sw.js. Format: YYYYMMDD-HHMM (24h UTC).
-const APP_VERSION = 'toolkit-20260325-2109';
+const APP_VERSION = 'toolkit-20260325-2150';
 
 // 1. Inline the base64 string directly (No import needed!)
 const silenceDataURI = "data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAADAAAGhgBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVWqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqr///////////////////////////////////////////8AAAA5TEFNRTMuOThyAc0AAAAAAAAAABSAJAiqQgAAgAAABobxtI73AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQxAACFEII9ACZ/sJZwWEoEb8w/////N//////JcxjHjf+7/v/H2PzCCFAiDtGeyBCIx7bJJ1mmEEMy6g8mm2c8nrGABB4h2Mkmn//4z/73u773R5qHHu/j/w7Kxkzh5lWRWdsifCkNAnY9Zc1HvDAhjhSHdFkHFzLmabt/AQxSg2wwzLhHIJOBnAWwVY4zrhIYhhc2kvhYDfQ4hDi2Gmh5KyFn8EcGIrHAngNgIwVIEMf5bzbAiTRoAD///8z/KVhkkWEle6IX+d/z4fvH3BShK1e5kmjkCMoxVmXhd4ROlTKo3iipasvTilY21q19ta30/v/0/idPX1v8PNxJL6ramnOVsdvMv2akO0iSYIzdJFirtzWXCZicS9vHqvSKyqm5XJBdqBwPxyfJdykhWTZ0G0ZyTZGpLKxsNwwoRhsx3tZfhwmeOBVISm3impAC/IT/8hP/EKEM1KMdVdVKM2rHV4x7HVXZvbVVKN/qq8CiV9VL9jjH/6l6qf7MBCjZmOqsAibjcP+qqqv0oxqpa/NVW286hPo1nz2L/h8+jXt//uSxCmDU2IK/ECN98KKtE5IYzNoCfbw+u9i5r8PoadUMFPKqWL4LK3T/LCraMSHGkW4bpLXR/E6LlHOVQxmslKVJ8IULktMN06N0FKCpHCoYsjC4F+Z0NVqdNFoGSTjSiyjzLdnZ2fNqTi2eHKONONKLMPMKLONKLMPQRJGlFxZRoKcJFAYEeIFiRQkUWUeYfef//Ko04soswso40UJAgMw8wosososy0EalnZyjQUGBRQGIFggOWUacWUeYmuadrZziQKKEgQsQLAhQkUJAgMQDghltLO1onp0cpkNInSFMqlYeSEJ5AHsqFdOwy1DA2sRmRJKxdKRfLhfLw5BzUxBTUUzLjk4LjJVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjk4LjJVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7ksRRA8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=";
@@ -127,6 +127,54 @@ document.addEventListener('visibilitychange', () => {
 // ─── PERSISTENCE ─────────────────────────────────────────────
 const PREFS_KEY = 'toolkit_prefs_v2';
 function loadPrefs() { try { return JSON.parse(localStorage.getItem(PREFS_KEY)) || {}; } catch { return {}; } }
+
+// ─── TWO-COLUMN LAYOUT ──────────────────────────────────────
+// At ≥700px, cards are distributed into two flex columns in reading order
+// (left→right per row). Each column compresses independently on collapse.
+let cardGrid = null;
+
+/** Return cards in logical reading order (left→right, top→bottom). */
+function getLogicalCardOrder() {
+    if (cardGrid) {
+        const col1 = [...cardGrid.children[0].querySelectorAll('.card')];
+        const col2 = [...cardGrid.children[1].querySelectorAll('.card')];
+        const order = [];
+        const max = Math.max(col1.length, col2.length);
+        for (let i = 0; i < max; i++) {
+            if (col1[i]) order.push(col1[i]);
+            if (col2[i]) order.push(col2[i]);
+        }
+        return order;
+    }
+    return [...document.querySelectorAll('.card')];
+}
+
+/** Move cards into two flex columns (≥700px) or back to body (<700px). */
+function distributeCards() {
+    const isWide = window.innerWidth >= 700;
+    if (isWide) {
+        const cards = cardGrid ? getLogicalCardOrder() : [...document.querySelectorAll('.card')];
+        if (!cardGrid) {
+            cardGrid = document.createElement('div');
+            cardGrid.className = 'card-grid';
+            cardGrid.appendChild(document.createElement('div')).className = 'card-grid-col';
+            cardGrid.appendChild(document.createElement('div')).className = 'card-grid-col';
+            const footer = document.getElementById('app-version-footer');
+            document.body.insertBefore(cardGrid, footer);
+        }
+        const [col1, col2] = cardGrid.children;
+        cards.forEach((card, i) => {
+            (i % 2 === 0 ? col1 : col2).appendChild(card);
+        });
+    } else if (cardGrid) {
+        const cards = getLogicalCardOrder();
+        const footer = document.getElementById('app-version-footer');
+        cards.forEach(card => document.body.insertBefore(card, footer));
+        cardGrid.remove();
+        cardGrid = null;
+    }
+}
+
 function savePrefs() {
     try {
         localStorage.setItem(PREFS_KEY, JSON.stringify({
@@ -138,7 +186,7 @@ function savePrefs() {
             droneOctave: droneState.octave,
             droneVolume: droneState.volume,
             refA,
-            cardOrder: [...document.querySelectorAll('.card')].map(c => c.id),
+            cardOrder: getLogicalCardOrder().map(c => c.id),
             collapsedCards: [...document.querySelectorAll('.card.collapsed')].map(c => c.id),
         }));
     } catch(e) {}
@@ -399,6 +447,8 @@ initDB().then(()=>{
         releaseMicStream
     });
     initCardDrag();
+    distributeCards();
+    window.matchMedia('(min-width: 700px)').addEventListener('change', distributeCards);
     document.body.dataset.ready = '1';
 });
 
@@ -462,9 +512,20 @@ function initCardDrag() {
         const others = getCards();
         others.forEach(c => c.classList.remove('drop-above', 'drop-below'));
         const target = findDropTarget(clientX, clientY);
-        if (target) {
-            const rect = target.getBoundingClientRect();
-            target.parentNode.insertBefore(dragging, clientY < rect.top + rect.height / 2 ? target : target.nextSibling);
+        if (!target) return;
+        const rect = target.getBoundingClientRect();
+        const before = clientY < rect.top + rect.height / 2;
+        if (cardGrid) {
+            // Two-column mode: reorder logically then redistribute
+            const order = getLogicalCardOrder().filter(c => c !== dragging);
+            const idx = order.indexOf(target);
+            order.splice(before ? idx : idx + 1, 0, dragging);
+            const [col1, col2] = cardGrid.children;
+            order.forEach((card, i) => {
+                (i % 2 === 0 ? col1 : col2).appendChild(card);
+            });
+        } else {
+            target.parentNode.insertBefore(dragging, before ? target : target.nextSibling);
         }
     }
 

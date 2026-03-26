@@ -70,7 +70,10 @@ test.describe('Tablet 2-column layout', () => {
         expect(col1.length).toBeGreaterThan(0);
         expect(col2.length).toBeGreaterThan(0);
 
-        const { before, after } = await drag(page, col1[0].id, col2[0], 0.25);
+        // Use yFraction=0.75 so the cursor lands in the lower half of the target,
+        // which inserts AFTER (not before) — ensuring a reorder even when the
+        // source and target are adjacent in DOM order (as in CSS grid layout).
+        const { before, after } = await drag(page, col1[0].id, col2[0], 0.75);
         expect(after).not.toEqual(before);
     });
 
@@ -86,7 +89,9 @@ test.describe('Tablet 2-column layout', () => {
 
     // ── Drag diagonally (different column AND different row) ─────────────────
     test('drag-to-reorder: diagonal (col2 bottom → col1 top)', async ({ page }) => {
-        await page.setViewportSize({ width: 768, height: 1024 });
+        // Use a taller viewport so all cards are visible (CSS grid rows stack
+        // vertically and can exceed 1024px).
+        await page.setViewportSize({ width: 768, height: 2200 });
         const { col1, col2 } = await getCardColumns(page);
         expect(col1.length).toBeGreaterThan(0);
         expect(col2.length).toBeGreaterThan(0);
