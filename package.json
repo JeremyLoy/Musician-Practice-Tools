@@ -3,7 +3,8 @@
   "private": true,
   "devDependencies": {
     "@playwright/test": "^1.49.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "wavesurfer.js": "7"
   },
   "dependencies": {
     "pitchfinder": "2.3.4"

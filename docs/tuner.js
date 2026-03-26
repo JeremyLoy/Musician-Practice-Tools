@@ -1,4 +1,5 @@
 // @ts-check
+/** @import { PitchDetector } from 'pitchfinder/lib/detectors/types' */
 // ─── CHROMATIC TUNER ─────────────────────────────────────────────────────────
 
 // ─── Type Definitions ────────────────────────────────────────────────────────
@@ -35,7 +36,7 @@ const NOTE_HOLD = 3;   // consecutive agreeing medians before note label switche
 
 // ─── Pure exports (testable in isolation) ────────────────────────────────────
 
-/** @type {((buf: Float32Array) => number | null) | null} */
+/** @type {PitchDetector | null} */
 let _yinDetector = null;
 /** @type {number} */
 let _yinSampleRate = 0;
@@ -58,11 +59,11 @@ export function detectPitch(analyser, sampleRate) {
 
     // Lazy-init YIN detector; recreate if sample rate changes
     if (!_yinDetector || _yinSampleRate !== sampleRate) {
-        _yinDetector = /** @type {any} */ (window).Pitchfinder.YIN({ sampleRate, threshold: 0.15 });
+        _yinDetector = /** @type {import('pitchfinder').default} */ (/** @type {any} */ (window).Pitchfinder).YIN({ sampleRate, threshold: 0.15 });
         _yinSampleRate = sampleRate;
     }
 
-    const freq = /** @type {(buf: Float32Array) => number | null} */ (_yinDetector)(buf);
+    const freq = /** @type {PitchDetector} */ (_yinDetector)(buf);
     return (freq && freq > 0) ? freq : null;
 }
 

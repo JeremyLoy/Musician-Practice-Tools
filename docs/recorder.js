@@ -1,4 +1,5 @@
 // @ts-check
+/** @import WaveSurfer from 'wavesurfer.js' */
 // ─── AUDIO RECORDER ──────────────────────────────────────────────────────────
 
 // ─── Type Definitions ────────────────────────────────────────────────────────
@@ -149,7 +150,7 @@ export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, rele
 
                 // Use MediaElement backend: lets the browser's native <audio> handle decoding,
                 // which is the only reliable approach on iOS Safari for blob URLs.
-                const ws = /** @type {any} */ (window).WaveSurfer.create({
+                const ws = /** @type {typeof WaveSurfer} */ (/** @type {any} */ (window).WaveSurfer).create({
                     container: `#w-${m.id}`,
                     waveColor: '#475569',
                     progressColor: '#22c55e',
