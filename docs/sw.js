@@ -1,3 +1,4 @@
+// @ts-nocheck
 // ─── SERVICE WORKER — Musician's Practice Toolkit ────────────────────────────
 //
 // HOW UPDATES WORK:

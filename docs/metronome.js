@@ -1,21 +1,82 @@
+// @ts-check
 // ─── METRONOME ──────────────────────────────────────────────────────────────
+
+// ─── Type Definitions ────────────────────────────────────────────────────────
+
+/**
+ * Metronome meter configuration.
+ * @typedef {object} Meter
+ * @property {number[]} groups - Pulse counts per beat group (e.g. [3,3] = 6/8, [2,2,3] = 7/8).
+ * @property {number} denom - Note value denominator (notation-only, doesn't affect timing).
+ * @property {number} subdivision - Sub-clicks per pulse: 1, 2, 3, or 4.
+ */
+
+/**
+ * A single pulse in the metronome schedule.
+ * @typedef {object} Pulse
+ * @property {boolean} isGroupBeat - True if this pulse is the first in its beat group.
+ * @property {number} subDur - Duration of this subdivision in seconds.
+ */
+
+/**
+ * Metronome preferences emitted via onPrefsChange callback.
+ * @typedef {object} MetronomePrefs
+ * @property {number} bpm
+ * @property {Meter} meter
+ * @property {boolean} metroSound
+ * @property {boolean} metroLight
+ * @property {number} metroVolume
+ * @property {string} clickSound
+ */
+
+/**
+ * Options for initializing the metronome module.
+ * @typedef {object} MetronomeInitOptions
+ * @property {() => AudioContext} getCtx - Returns the shared AudioContext (creates lazily).
+ * @property {MetronomePrefs} initialPrefs - Initial metronome settings.
+ * @property {(running: boolean) => void} onRunningChange - Called when metronome starts or stops.
+ * @property {(prefs: MetronomePrefs) => void} onPrefsChange - Called when any metronome preference changes.
+ */
+
+/**
+ * Public API returned by initMetronome().
+ * @typedef {object} MetronomeAPI
+ * @property {() => void} handleVisibilityResume - Re-syncs timing after the page becomes visible again.
+ */
 
 // ─── Pure exports (testable in isolation) ────────────────────────────────────
 
+/**
+ * Converts a meter object to a time signature string (e.g. "4/4", "6/8").
+ * @param {Pick<Meter, 'groups' | 'denom'>} m
+ * @returns {string}
+ */
 export function meterToString(m) {
     const n = m.groups.reduce((a, b) => a + b, 0);
     return `${n}/${m.denom}`;
 }
 
+/**
+ * Parses a user-entered time signature string (e.g. "7/8") into a meter object.
+ * @param {string} str
+ * @returns {{ groups: number[], denom: number } | null} Parsed meter or null if invalid.
+ */
 export function parseTsInput(str) {
     const m = str.trim().match(/^(\d+)\s*\/\s*(\d+)$/);
     if (!m) return null;
-    const n = parseInt(m[1]), d = parseInt(m[2]);
+    const n = parseInt(/** @type {string} */ (m[1])), d = parseInt(/** @type {string} */ (m[2]));
     if (n < 1 || n > 32 || d < 1 || d > 64) return null;
     return { groups: Array(n).fill(1), denom: d };
 }
 
+/**
+ * Pre-computes a flat array of pulses from BPM and meter settings.
+ * @param {number} bpm - Beats per minute (40–280).
+ * @param {Meter} meter - Current meter configuration.
+ * @returns {Pulse[]}
+ */
 export function buildSchedule(bpm, meter) {
+    /** @type {Pulse[]} */
     const pulses = [];
     const beatSec = 60 / bpm;
     meter.groups.forEach(groupSize => {
@@ -30,6 +91,11 @@ export function buildSchedule(bpm, meter) {
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
+/**
+ * Initializes the metronome module: scheduling, click sounds, and UI bindings.
+ * @param {MetronomeInitOptions} options
+ * @returns {MetronomeAPI}
+ */
 export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsChange }) {
     // ─── State ───────────────────────────────────────────────────────────────
     let bpm         = initialPrefs.bpm;
@@ -39,15 +105,25 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
     let clickSound  = initialPrefs.clickSound;
     let meter       = initialPrefs.meter;
 
-    let metroRunning = false, nextBeat = 0, schedTimer, pulseIndex = 0;
-    let schedPulses = [], totalPulses = 0;
+    let metroRunning = false, nextBeat = 0, pulseIndex = 0;
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let schedTimer;
+    /** @type {Pulse[]} */
+    let schedPulses = [];
+    let totalPulses = 0;
+    /** @type {GainNode | null} */
     let metroMaster = null;
 
+    /** Emits current metronome preferences via the onPrefsChange callback. */
     function emitPrefs() {
         onPrefsChange({ bpm, meter, metroSound, metroLight, metroVolume, clickSound });
     }
 
     // ─── Master gain ─────────────────────────────────────────────────────────
+    /**
+     * Returns the metronome master gain node, creating it lazily.
+     * @returns {GainNode}
+     */
     function getMetroMaster() {
         const ctx = getCtx();
         if (!metroMaster || metroMaster.context !== ctx) {
@@ -59,38 +135,48 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
     }
 
     // ─── DOM refs ────────────────────────────────────────────────────────────
-    const bpmDisplay = document.getElementById('bpm-display');
-    const bpmInput   = document.getElementById('bpm-input');
-    const metroCard  = document.getElementById('metro-card');
-    const wheelEl    = document.getElementById('wheel');
+    const bpmDisplay = /** @type {HTMLElement} */ (document.getElementById('bpm-display'));
+    const bpmInput   = /** @type {HTMLInputElement} */ (document.getElementById('bpm-input'));
+    const metroCard  = /** @type {HTMLElement} */ (document.getElementById('metro-card'));
+    const wheelEl    = /** @type {HTMLElement} */ (document.getElementById('wheel'));
 
     // ─── BPM ─────────────────────────────────────────────────────────────────
+    /**
+     * Updates the BPM display and wheel rotation without rebuilding the schedule.
+     * @param {number} v - New BPM value (clamped to 40–280).
+     */
     const updateBPMDisplay = v => {
         bpm = Math.min(Math.max(v, 40), 280);
-        bpmDisplay.textContent = bpm;
-        bpmInput.value = bpm;
+        bpmDisplay.textContent = String(bpm);
+        bpmInput.value = String(bpm);
         wheelEl.style.transform = `rotate(${bpm * 1.5}deg)`;
     };
+    /**
+     * Updates BPM, rebuilds the schedule, and emits preferences.
+     * @param {number} v - New BPM value.
+     */
     const updateBPM = v => { updateBPMDisplay(v); rebuildSchedule(); emitPrefs(); };
 
     bpmDisplay.onclick = () => { bpmDisplay.style.display = 'none'; bpmInput.style.display = 'block'; bpmInput.focus(); };
     bpmInput.onblur    = () => { updateBPM(parseInt(bpmInput.value) || 120); bpmInput.style.display = 'none'; bpmDisplay.style.display = 'block'; };
     bpmInput.onkeydown = e => { if (e.key === 'Enter') bpmInput.blur(); };
-    document.getElementById('bpmMinus').onclick = () => updateBPM(bpm - 1);
-    document.getElementById('bpmPlus').onclick  = () => updateBPM(bpm + 1);
+    /** @type {HTMLElement} */ (document.getElementById('bpmMinus')).onclick = () => updateBPM(bpm - 1);
+    /** @type {HTMLElement} */ (document.getElementById('bpmPlus')).onclick  = () => updateBPM(bpm + 1);
 
     // ─── Metro volume slider ─────────────────────────────────────────────────
-    document.getElementById('metroVolume').value = metroVolume;
-    document.getElementById('metroVolume').oninput = e => {
-        metroVolume = parseFloat(e.target.value);
+    const metroVolumeEl = /** @type {HTMLInputElement} */ (document.getElementById('metroVolume'));
+    metroVolumeEl.value = String(metroVolume);
+    metroVolumeEl.oninput = e => {
+        metroVolume = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
         if (metroMaster) metroMaster.gain.value = metroVolume;
         emitPrefs();
     };
 
     // ─── Time signature ──────────────────────────────────────────────────────
-    const tsInput = document.getElementById('tsInput');
+    const tsInput = /** @type {HTMLInputElement} */ (document.getElementById('tsInput'));
     tsInput.value = meterToString(meter);
 
+    /** Validates and applies the time signature input field value. */
     function commitTsInput() {
         const parsed = parseTsInput(tsInput.value);
         if (parsed) {
@@ -116,26 +202,33 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
     });
 
     // ─── Subdivision ─────────────────────────────────────────────────────────
-    document.querySelectorAll('#subdivCtrl button').forEach(b =>
-        b.classList.toggle('active', parseInt(b.dataset.val) === meter.subdivision));
-    document.getElementById('subdivCtrl').onclick = e => {
-        if (e.target.tagName !== 'BUTTON') return;
-        document.querySelectorAll('#subdivCtrl button').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        meter.subdivision = parseInt(e.target.dataset.val);
+    /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('#subdivCtrl button')).forEach(b =>
+        b.classList.toggle('active', parseInt(b.dataset.val || '1') === meter.subdivision));
+    /** @type {HTMLElement} */ (document.getElementById('subdivCtrl')).onclick = e => {
+        const btn = /** @type {HTMLButtonElement} */ (e.target);
+        if (btn.tagName !== 'BUTTON') return;
+        /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('#subdivCtrl button')).forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        meter.subdivision = parseInt(btn.dataset.val || '1');
         applyMeterChange();
     };
 
     // ─── Click sound selector ────────────────────────────────────────────────
-    document.querySelectorAll('#clickSoundCtrl button').forEach(b => b.classList.toggle('active', b.dataset.val === clickSound));
-    document.getElementById('clickSoundCtrl').onclick = e => {
-        if (e.target.tagName !== 'BUTTON') return;
-        document.querySelectorAll('#clickSoundCtrl button').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        clickSound = e.target.dataset.val; emitPrefs();
+    /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('#clickSoundCtrl button')).forEach(b => b.classList.toggle('active', b.dataset.val === clickSound));
+    /** @type {HTMLElement} */ (document.getElementById('clickSoundCtrl')).onclick = e => {
+        const btn = /** @type {HTMLButtonElement} */ (e.target);
+        if (btn.tagName !== 'BUTTON') return;
+        /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll('#clickSoundCtrl button')).forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        clickSound = btn.dataset.val || 'clave'; emitPrefs();
     };
 
     // ─── Click sounds ────────────────────────────────────────────────────────
+    /**
+     * Synthesizes a wood-block (clave) click sound.
+     * @param {number} atTime - AudioContext time to play at.
+     * @param {boolean} isAccent - Whether this is an accented beat.
+     */
     function playClave(atTime, isAccent) {
         const ctx = getCtx(), SR = ctx.sampleRate, out = getMetroMaster();
         const vol = isAccent ? 1.0 : 0.60, freq = isAccent ? 2750 : 2450;
@@ -161,6 +254,11 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
         res.connect(rG).connect(out); res.start(atTime); res.stop(atTime + 0.028);
     }
 
+    /**
+     * Synthesizes a square-wave click sound.
+     * @param {number} atTime - AudioContext time to play at.
+     * @param {boolean} isAccent - Whether this is an accented beat.
+     */
     function playClick(atTime, isAccent) {
         const ctx = getCtx(), out = getMetroMaster();
         const vol = isAccent ? 1.0 : 0.65, freq = isAccent ? 1200 : 900;
@@ -174,6 +272,11 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
         o.connect(lp).connect(g).connect(out); o.start(atTime); o.stop(atTime + 0.022);
     }
 
+    /**
+     * Synthesizes a rim shot sound using filtered noise.
+     * @param {number} atTime - AudioContext time to play at.
+     * @param {boolean} isAccent - Whether this is an accented beat.
+     */
     function playRim(atTime, isAccent) {
         const ctx = getCtx(), SR = ctx.sampleRate, out = getMetroMaster();
         const vol = isAccent ? 1.0 : 0.6;
@@ -196,11 +299,16 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
         }
     }
 
+    /**
+     * Synthesizes a cowbell sound with two detuned square waves.
+     * @param {number} atTime - AudioContext time to play at.
+     * @param {boolean} isAccent - Whether this is an accented beat.
+     */
     function playCowbell(atTime, isAccent) {
         const ctx = getCtx(), out = getMetroMaster();
         const vol = isAccent ? 1.0 : 0.62;
         const dur = isAccent ? 0.28 : 0.18;
-        [[562, 1], [845, 0.6]].forEach(([f, fvol]) => {
+        /** @type {[number, number][]} */ ([[562, 1], [845, 0.6]]).forEach(([f, fvol]) => {
             const o = ctx.createOscillator(), g = ctx.createGain();
             o.type = 'square'; o.frequency.value = f;
             const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f * 1.4; bp.Q.value = 0.8;
@@ -214,6 +322,11 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
         o2.connect(g2).connect(out); o2.start(atTime); o2.stop(atTime + 0.02);
     }
 
+    /**
+     * Dispatches to the currently selected click sound.
+     * @param {number} atTime - AudioContext time to play at.
+     * @param {boolean} isAccent - Whether this is an accented beat.
+     */
     function playBeat(atTime, isAccent) {
         if (clickSound === 'clave')        playClave(atTime, isAccent);
         else if (clickSound === 'click')   playClick(atTime, isAccent);
@@ -221,6 +334,10 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
         else if (clickSound === 'cowbell') playCowbell(atTime, isAccent);
     }
 
+    /**
+     * Plays a quiet sine tick for subdivision beats.
+     * @param {number} atTime - AudioContext time to play at.
+     */
     function playSubdiv(atTime) {
         const ctx = getCtx(), out = getMetroMaster();
         const o = ctx.createOscillator(), g = ctx.createGain();
@@ -232,7 +349,12 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
     }
 
     // ─── Visual flash ────────────────────────────────────────────────────────
-    const viewportFlash = document.getElementById('viewport-flash');
+    const viewportFlash = /** @type {HTMLElement} */ (document.getElementById('viewport-flash'));
+    /**
+     * Schedules a visual beat flash on the metronome UI elements.
+     * @param {number} atTime - AudioContext time for the flash.
+     * @param {boolean} isAccent - Whether this is an accented (downbeat) flash.
+     */
     function triggerFlash(atTime, isAccent) {
         const delay = Math.max(0, (atTime - getCtx().currentTime) * 1000);
         const dur = isAccent ? 130 : 80;
@@ -251,21 +373,24 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
     }
 
     // ─── Scheduling ──────────────────────────────────────────────────────────
+    /** Rebuilds the pulse schedule from the current BPM and meter. */
     function rebuildSchedule() {
         schedPulses = buildSchedule(bpm, meter);
         totalPulses = schedPulses.length;
     }
 
+    /** Handles meter changes: rebuilds schedule, resets pulse index if running, emits prefs. */
     function applyMeterChange() {
         rebuildSchedule();
         if (metroRunning) { pulseIndex = 0; nextBeat = getCtx().currentTime; }
         emitPrefs();
     }
 
+    /** Core scheduling loop — fires every 25ms, looks ahead 100ms to schedule audio events. */
     function sched() {
         const ctx = getCtx();
         while (nextBeat < ctx.currentTime + 0.1) {
-            const pulse = schedPulses[pulseIndex % totalPulses];
+            const pulse = /** @type {Pulse} */ (schedPulses[pulseIndex % totalPulses]);
             const isDownbeat = (pulseIndex % totalPulses === 0);
             if (metroSound) {
                 if (pulse.isGroupBeat) playBeat(nextBeat, isDownbeat);
@@ -279,6 +404,7 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
     }
 
     // ─── Start / Stop ────────────────────────────────────────────────────────
+    /** Updates the Start/Stop button text and active state. */
     function updateMetroBtn() {
         const btn = document.getElementById('metroStartBtn');
         if (!btn) return;
@@ -286,6 +412,7 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
         else { btn.innerHTML = '▶<br>Start'; btn.classList.remove('is-active'); }
     }
 
+    /** Starts the metronome scheduling loop. */
     function startMetro() {
         if (metroRunning) return;
         metroRunning = true; pulseIndex = 0;
@@ -295,6 +422,7 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
         onRunningChange(true);
     }
 
+    /** Stops the metronome and clears all visual effects. */
     function stopMetro() {
         if (!metroRunning) return;
         metroRunning = false; clearTimeout(schedTimer);
@@ -307,32 +435,37 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
     }
 
     // ─── Output toggles ─────────────────────────────────────────────────────
-    if (metroSound) document.getElementById('soundToggle').classList.add('active');
-    if (metroLight) document.getElementById('lightToggle').classList.add('active');
+    const soundToggle = /** @type {HTMLElement} */ (document.getElementById('soundToggle'));
+    const lightToggle = /** @type {HTMLElement} */ (document.getElementById('lightToggle'));
+    if (metroSound) soundToggle.classList.add('active');
+    if (metroLight) lightToggle.classList.add('active');
 
-    document.getElementById('soundToggle').onclick = function() {
+    soundToggle.onclick = () => {
         if (metroSound && !metroLight) return;
-        metroSound = !metroSound; this.classList.toggle('active', metroSound); emitPrefs();
+        metroSound = !metroSound; soundToggle.classList.toggle('active', metroSound); emitPrefs();
     };
-    document.getElementById('lightToggle').onclick = function() {
+    lightToggle.onclick = () => {
         if (metroLight && !metroSound) return;
-        metroLight = !metroLight; this.classList.toggle('active', metroLight); emitPrefs();
+        metroLight = !metroLight; lightToggle.classList.toggle('active', metroLight); emitPrefs();
     };
-    document.getElementById('metroStartBtn').onclick = function() {
+    /** @type {HTMLElement} */ (document.getElementById('metroStartBtn')).onclick = () => {
         if (metroRunning) { stopMetro(); }
         else { startMetro(); }
         emitPrefs();
     };
 
     // ─── Tap tempo ───────────────────────────────────────────────────────────
-    let tapTimes = [], tapResetTimer = null;
-    document.getElementById('tapBtn').onclick = () => {
+    /** @type {number[]} */
+    let tapTimes = [];
+    /** @type {ReturnType<typeof setTimeout> | null} */
+    let tapResetTimer = null;
+    /** @type {HTMLElement} */ (document.getElementById('tapBtn')).onclick = () => {
         const now = performance.now();
-        clearTimeout(tapResetTimer);
-        if (tapTimes.length && now - tapTimes[tapTimes.length - 1] > 2000) tapTimes = [];
+        if (tapResetTimer !== null) clearTimeout(tapResetTimer);
+        if (tapTimes.length && now - (tapTimes[tapTimes.length - 1] ?? 0) > 2000) tapTimes = [];
         tapTimes.push(now);
         if (tapTimes.length >= 2) {
-            const gaps = tapTimes.slice(1).map((t, i) => t - tapTimes[i]);
+            const gaps = tapTimes.slice(1).map((t, i) => t - /** @type {number} */ (tapTimes[i]));
             updateBPM(Math.round(60000 / (gaps.reduce((a, b) => a + b) / gaps.length)));
             if (metroRunning) { clearTimeout(schedTimer); pulseIndex = 0; nextBeat = getCtx().currentTime; sched(); }
         }
@@ -344,13 +477,15 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
     (function() {
         const outer = wheelEl.parentElement;
         let dragging = false, lastAngle = 0, fracBpm = 0;
-        const getAngle = e => {
-            const r = outer.getBoundingClientRect();
-            const px = e.touches ? e.touches[0].clientX : e.clientX;
-            const py = e.touches ? e.touches[0].clientY : e.clientY;
+        /** @param {MouseEvent | TouchEvent} e */
+        const getAngle = (e) => {
+            const r = /** @type {HTMLElement} */ (outer).getBoundingClientRect();
+            const px = 'touches' in e ? /** @type {Touch} */ (e.touches[0]).clientX : e.clientX;
+            const py = 'touches' in e ? /** @type {Touch} */ (e.touches[0]).clientY : e.clientY;
             return Math.atan2(py - (r.top + r.height / 2), px - (r.left + r.width / 2)) * (180 / Math.PI);
         };
-        const onMove = e => {
+        /** @param {MouseEvent | TouchEvent} e */
+        const onMove = (e) => {
             if (!dragging) return;
             const angle = getAngle(e);
             let d = angle - lastAngle; lastAngle = angle;
