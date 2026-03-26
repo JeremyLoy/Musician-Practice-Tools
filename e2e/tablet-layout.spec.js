@@ -121,7 +121,7 @@ test.describe('Card collapse', () => {
 
     test('collapse button is present on each card', async ({ page }) => {
         const buttons = page.locator('.card-collapse-btn');
-        await expect(buttons).toHaveCount(5);
+        await expect(buttons).toHaveCount(6);
     });
 
     test('collapse button meets 44px touch target', async ({ page }) => {

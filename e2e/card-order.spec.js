@@ -25,7 +25,7 @@ test.describe('Card drag-to-reorder', () => {
 
     test('default card order is drone, metro, memos, tuner, dict', async ({ page }) => {
         const order = await page.locator('.card').evaluateAll(cards => cards.map(c => c.id));
-        expect(order).toEqual(['drone-card', 'metro-card', 'memos-card', 'tuner-card', 'dict-card']);
+        expect(order).toEqual(['drone-card', 'metro-card', 'memos-card', 'tuner-card', 'spectrum-card', 'dict-card']);
     });
 
     test('drag handle meets 44px touch target on mobile', async ({ page }) => {

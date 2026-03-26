@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'bun:test';
 
-const CARD_IDS = ['drone-card', 'metro-card', 'memos-card', 'tuner-card', 'dict-card'];
+const CARD_IDS = ['drone-card', 'metro-card', 'memos-card', 'tuner-card', 'spectrum-card', 'dict-card'];
 
 describe('cardOrder persistence', () => {
     test('default card IDs are unique', () => {
@@ -14,7 +14,7 @@ describe('cardOrder persistence', () => {
     });
 
     test('a reordered array preserves all IDs', () => {
-        const reordered = [CARD_IDS[2], CARD_IDS[0], CARD_IDS[4], CARD_IDS[1], CARD_IDS[3]];
+        const reordered = [CARD_IDS[2], CARD_IDS[0], CARD_IDS[5], CARD_IDS[1], CARD_IDS[4], CARD_IDS[3]];
         expect(reordered.sort()).toEqual([...CARD_IDS].sort());
     });
 
