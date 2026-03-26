@@ -38,8 +38,10 @@ docs/manifest.json     — PWA manifest (name, icons, display mode)
 docs/sw.js             — service worker (cache-first offline strategy)
 docs/wavesurfer.min.js — WaveSurfer.js v7 bundled locally (do not CDN-ify)
 docs/pitchfinder.min.js — pitchfinder v2.3.4 bundled locally (YIN pitch detection)
+docs/types.d.ts        — TypeScript type definitions for JSDoc annotations
 docs/icon-192.png      — home screen icon (192×192)
 docs/icon-512.png      — home screen icon (512×512)
+tsconfig.json          — TypeScript config for checkJs type checking (no emit)
 scripts/bake_dict.py   — dev tool: regenerates normTerm/normDef fields in dictionary.js
 scripts/pitchfinder-entry.js — entry point for rebuilding pitchfinder browser bundle
 tests/dict.test.js     — Bun test suite for dict.js pure functions and dictionary data
@@ -116,6 +118,24 @@ Single breakpoint at `max-width: 600px`. At this width:
 - `.metro-controls` goes full-width
 - `.card` padding reduces to `1rem`
 
+## Type Checking
+
+All JavaScript files under `docs/` are type-checked using TypeScript's `checkJs` mode. Type definitions live in `docs/types.d.ts` and are referenced via JSDoc annotations in each `.js` file.
+
+### Running the type checker
+
+    npx tsc --noEmit
+
+This must exit with zero errors.
+
+### Rules
+
+- Every new function must have a JSDoc `@param` / `@returns` annotation.
+- Shared state objects and interfaces are defined in `docs/types.d.ts`.
+- Use `/** @type {…} */` casts for `document.getElementById()` results (e.g. `/** @type {HTMLInputElement} */`).
+- `docs/sw.js` uses `@ts-nocheck` because the Service Worker global scope differs from the DOM.
+- The bundled vendor files (`wavesurfer.min.js`, `pitchfinder.min.js`) are excluded from checking via `tsconfig.json`.
+
 ## Testing
 
 ### Unit Tests (Bun)
@@ -141,12 +161,12 @@ automatically.
 
 ### Stop Hook Enforcement
 
-**All tests must pass before every commit, push, or task sign-off.**
-The Claude Stop hook runs both suites automatically:
+**All tests and type checking must pass before every commit, push, or task sign-off.**
+The Claude Stop hook runs type checking and both test suites automatically:
 
-    bun test && bun x playwright test
+    npx tsc --noEmit && bun test && bun x playwright test
 
-Claude cannot finish a response if either suite exits non-zero.
+Claude cannot finish a response if any command exits non-zero.
 
 When adding new features or extracting modules, always add corresponding tests:
 - **Pure functions**: Add unit tests in `tests/` (Bun)

@@ -1,3 +1,4 @@
+// @ts-check
 import { initDict } from './dict.js';
 import { initTuner } from './tuner.js';
 import { initRecorder } from './recorder.js';
@@ -5,6 +6,7 @@ import { initMetronome } from './metronome.js';
 
 // ─── VERSION ─────────────────────────────────────────────────
 // Keep in sync with CACHE_VERSION in sw.js. Format: YYYYMMDD-HHMM (24h UTC).
+/** @type {string} */
 const APP_VERSION = 'toolkit-20260326-1200';
 
 // 1. Inline the base64 string directly (No import needed!)
@@ -20,6 +22,7 @@ audioTag.src = silenceDataURI;
 // 3. Unlock audio on the FIRST user interaction
 let isAudioUnlocked = false;
 
+/** Plays a silent audio clip to bypass the iOS mute switch on first user gesture. */
 const unlockAudio = () => {
     if (isAudioUnlocked) return;
 
@@ -45,7 +48,10 @@ document.addEventListener('click', unlockAudio, { once: true });
 // ─── SCREEN WAKE LOCK ────────────────────────────────────────
 // Prevents iOS/Android from dimming or locking the screen while
 // the drone, metronome, or recorder is active.
+/** @type {WakeLockSentinel | null} */
 let wakeLock = null;
+
+/** Acquires or releases the screen wake lock based on whether any audio feature is active. */
 async function updateWakeLock() {
     const audioActive = droneState?.running || metroRunning || recorderRunning || tunerRunning;
     if (audioActive && !wakeLock && 'wakeLock' in navigator) {
@@ -58,9 +64,14 @@ async function updateWakeLock() {
 }
 
 // ─── AUDIO CONTEXT ───────────────────────────────────────────
-let audioCtx, db;
+/** @type {AudioContext | undefined} */
+let audioCtx;
+/** @type {IDBDatabase | undefined} */
+let db;
+
+/** Returns the shared AudioContext, creating it lazily and resuming if suspended. */
 const getCtx = () => {
-    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (!audioCtx) audioCtx = new (window.AudioContext || /** @type {any} */ (window).webkitAudioContext)();
     if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') audioCtx.resume();
     return audioCtx;
 };
@@ -77,8 +88,13 @@ if (navigator.audioSession) {
 // Single getUserMedia({ audio: true }) shared by tuner + recorder.
 // Uses the simple constraint form for iOS Safari compatibility.
 // Only releases the OS mic handle when *both* consumers are idle.
+/** @type {MediaStream | null} */
 let sharedMicStream = null;
 
+/**
+ * Returns the shared microphone MediaStream, requesting access if needed.
+ * @returns {Promise<MediaStream>}
+ */
 async function getMicStream() {
     if (sharedMicStream && sharedMicStream.getTracks().every(t => t.readyState === 'live')) {
         return sharedMicStream;
@@ -87,6 +103,7 @@ async function getMicStream() {
     return sharedMicStream;
 }
 
+/** Releases the shared mic stream when both the tuner and recorder are idle. */
 function releaseMicStream() {
     if (!tunerRunning && !recorderRunning && sharedMicStream) {
         sharedMicStream.getTracks().forEach(t => t.stop());
@@ -126,14 +143,23 @@ document.addEventListener('visibilitychange', () => {
 
 // ─── PERSISTENCE ─────────────────────────────────────────────
 const PREFS_KEY = 'toolkit_prefs_v2';
-function loadPrefs() { try { return JSON.parse(localStorage.getItem(PREFS_KEY)) || {}; } catch { return {}; } }
+
+/**
+ * Loads saved preferences from localStorage.
+ * @returns {SavedPrefs}
+ */
+function loadPrefs() { try { return JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') || {}; } catch { return {}; } }
 
 // ─── TWO-COLUMN LAYOUT ──────────────────────────────────────
 // At ≥700px, cards are distributed into two flex columns in reading order
 // (left→right per row). Each column compresses independently on collapse.
+/** @type {HTMLDivElement | null} */
 let cardGrid = null;
 
-/** Return cards in logical reading order (left→right, top→bottom). */
+/**
+ * Returns cards in logical reading order (left→right, top→bottom).
+ * @returns {Element[]}
+ */
 function getLogicalCardOrder() {
     if (cardGrid) {
         const col1 = [...cardGrid.children[0].querySelectorAll('.card')];
@@ -149,7 +175,7 @@ function getLogicalCardOrder() {
     return [...document.querySelectorAll('.card')];
 }
 
-/** Move cards into two flex columns (≥700px) or back to body (<700px). */
+/** Moves cards into two flex columns (≥700px) or back to single-column body (<700px). */
 function distributeCards() {
     const isWide = window.innerWidth >= 700;
     if (isWide) {
@@ -175,6 +201,7 @@ function distributeCards() {
     }
 }
 
+/** Saves all current preferences (drone, metronome, card state) to localStorage. */
 function savePrefs() {
     try {
         localStorage.setItem(PREFS_KEY, JSON.stringify({
@@ -193,14 +220,20 @@ function savePrefs() {
 }
 
 // ─── INDEXEDDB ───────────────────────────────────────────────
+/**
+ * Opens the IndexedDB database, creating the 'memos' object store if needed.
+ * @returns {Promise<void>}
+ */
 const initDB = () => new Promise(res => {
     const req = indexedDB.open('MusiciansToolkit', 1);
-    req.onupgradeneeded = e => e.target.result.createObjectStore('memos', { keyPath: 'id' });
-    req.onsuccess = e => { db = e.target.result; res(); };
+    req.onupgradeneeded = e => /** @type {IDBOpenDBRequest} */ (e.target).result.createObjectStore('memos', { keyPath: 'id' });
+    req.onsuccess = e => { db = /** @type {IDBOpenDBRequest} */ (e.target).result; res(undefined); };
 });
 
 // ─── DRONE DATA ───────────────────────────────────────────────
+/** @type {readonly string[]} */
 const noteNames = ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
+/** @type {DroneRatio[]} */
 const droneRatios = [
     {n:"Uni",s:0, r:1,      f:"1/1"},   {n:"m2", s:1,  r:16/15, f:"16/15"},
     {n:"M2", s:2, r:9/8,    f:"9/8"},   {n:"m3", s:3,  r:6/5,   f:"6/5"},
@@ -215,7 +248,7 @@ const droneRatios = [
 {
     const prefs0 = loadPrefs();
     if (prefs0.cardOrder?.length) {
-        const parent = document.querySelector('.card').parentNode;
+        const parent = /** @type {HTMLElement} */ (/** @type {HTMLElement} */ (document.querySelector('.card')).parentNode);
         const ref = document.getElementById('app-version-footer');
         prefs0.cardOrder.forEach(id => {
             const el = document.getElementById(id);
@@ -225,19 +258,29 @@ const droneRatios = [
 }
 
 // ─── DRONE STATE ──────────────────────────────────────────────
+/** @type {SavedPrefs} */
 const prefs = loadPrefs();
+/** @type {DroneState} */
 let droneState = {
     root:     prefs.droneRoot     ?? 9,
     intervals:new Set(prefs.droneIntervals ?? [0]),
-    tuning:   prefs.droneTuning   ?? 'just',
-    color:    prefs.droneColor    ?? 'sine',
+    tuning:   /** @type {'just' | 'equal'} */ (prefs.droneTuning   ?? 'just'),
+    color:    /** @type {OscillatorType} */ (prefs.droneColor    ?? 'sine'),
     running:  false,
     octave:   prefs.droneOctave   ?? 4,
     volume:   prefs.droneVolume   ?? 0.7
 };
-let activeOscs = [], droneMaster = null;
+/** @type {ActiveOsc[]} */
+let activeOscs = [];
+/** @type {GainNode | null} */
+let droneMaster = null;
+/** @type {number} */
 let refA = prefs.refA ?? prefs.droneRef ?? 440;
 
+/**
+ * Returns the drone master gain node, creating it lazily.
+ * @returns {GainNode}
+ */
 function getDroneMaster() {
     const ctx = getCtx();
     if (!droneMaster || droneMaster.context !== ctx) {
@@ -248,31 +291,37 @@ function getDroneMaster() {
     return droneMaster;
 }
 
+/**
+ * Returns a label string for the active intervals (e.g. "P5+Oct").
+ * @returns {string}
+ */
 function getIntervalLabel() {
     return [...droneState.intervals].sort((a,b)=>a-b)
-        .map(s => droneRatios.find(r=>r.s===s).n).join('+');
+        .map(s => /** @type {DroneRatio} */ (droneRatios.find(r=>r.s===s)).n).join('+');
 }
 
+/** Updates the debug console with current drone frequencies and ratios. */
 function updateDroneDebug() {
     const rootFreq = (refA * Math.pow(2,(droneState.root-9)/12)) * Math.pow(2,droneState.octave-4);
     let txt = `ROOT: ${noteNames[droneState.root]} @ ${rootFreq.toFixed(2)}Hz\nMODE: ${droneState.tuning.toUpperCase()}\n\n`;
     [...droneState.intervals].sort((a,b)=>a-b).forEach(s => {
-        const iv = droneRatios.find(r=>r.s===s);
+        const iv = /** @type {DroneRatio} */ (droneRatios.find(r=>r.s===s));
         const freq = droneState.tuning==='equal' ? rootFreq*Math.pow(2,s/12) : rootFreq*iv.r;
         const ratio = droneState.tuning==='equal' ? `2^(${s}/12)` : `${iv.f} (${iv.r.toFixed(3)})`;
         txt += `${iv.n.padEnd(4)}: ${freq.toFixed(2)}Hz | ${ratio}\n`;
     });
-    document.getElementById('debug-console').innerText = txt;
+    /** @type {HTMLElement} */ (document.getElementById('debug-console')).innerText = txt;
     savePrefs();
 }
 
+/** Creates and starts oscillators for all active drone intervals. */
 function startDrone() {
     updateWakeLock();
     const ctx = getCtx();
     const rootFreq = (refA * Math.pow(2,(droneState.root-9)/12)) * Math.pow(2,droneState.octave-4);
     const master = getDroneMaster();
     droneState.intervals.forEach(s => {
-        const iv = droneRatios.find(r=>r.s===s);
+        const iv = /** @type {DroneRatio} */ (droneRatios.find(r=>r.s===s));
         const f = droneState.tuning==='equal' ? rootFreq*Math.pow(2,s/12) : rootFreq*iv.r;
         const osc = ctx.createOscillator(), g = ctx.createGain();
         osc.type = droneState.color;
@@ -285,6 +334,7 @@ function startDrone() {
     });
 }
 
+/** Fades out and stops all active drone oscillators. */
 const stopDrone = () => {
     const ctx = getCtx();
     activeOscs.forEach(n => {
@@ -295,6 +345,7 @@ const stopDrone = () => {
     updateWakeLock();
 };
 
+/** Reconciles drone state: updates debug display and restarts oscillators if running. */
 const droneSync = () => { updateDroneDebug(); if(droneState.running){ stopDrone(); startDrone(); } };
 
 // Build root grid
@@ -325,71 +376,75 @@ droneRatios.forEach(rt => {
     document.getElementById('intervalGrid').appendChild(b);
 });
 
-document.getElementById('droneToggle').onclick = function() {
+const droneToggleBtn = /** @type {HTMLButtonElement} */ (document.getElementById('droneToggle'));
+droneToggleBtn.onclick = () => {
     droneState.running = !droneState.running;
-    if(droneState.running){ startDrone(); this.textContent='🎵 Stop Drone'; this.classList.add('is-active'); }
-    else { stopDrone(); this.textContent='🎵 Start Drone'; this.classList.remove('is-active'); }
+    if(droneState.running){ startDrone(); droneToggleBtn.textContent='🎵 Stop Drone'; droneToggleBtn.classList.add('is-active'); }
+    else { stopDrone(); droneToggleBtn.textContent='🎵 Start Drone'; droneToggleBtn.classList.remove('is-active'); }
 };
 
-document.getElementById('droneClear').onclick = () => {
+/** @type {HTMLElement} */ (document.getElementById('droneClear')).onclick = () => {
     droneState.intervals = new Set([0]);
     document.querySelectorAll('#intervalGrid .btn-toggle').forEach((b,i)=>b.classList.toggle('active',i===0));
     droneSync();
 };
 
 // Restore saved values
-const droneRefVal   = document.getElementById('droneRefVal');
-const droneOctaveInput = document.getElementById('droneOctave');
-const droneOctaveVal   = document.getElementById('droneOctaveVal');
+const droneRefVal      = /** @type {HTMLElement} */ (document.getElementById('droneRefVal'));
+const droneOctaveInput = /** @type {HTMLInputElement} */ (document.getElementById('droneOctave'));
+const droneOctaveVal   = /** @type {HTMLElement} */ (document.getElementById('droneOctaveVal'));
 
-droneRefVal.textContent = refA;
-droneOctaveInput.value = droneState.octave;
-droneOctaveVal.textContent = droneState.octave;
+droneRefVal.textContent = String(refA);
+droneOctaveInput.value = String(droneState.octave);
+droneOctaveVal.textContent = String(droneState.octave);
 
-document.getElementById('droneRefMinus').onclick = () => {
+/** @type {HTMLElement} */ (document.getElementById('droneRefMinus')).onclick = () => {
     refA = Math.max(400, refA - 1);
-    droneRefVal.textContent = refA;
-    document.getElementById('tunerRefVal').textContent = refA;
+    droneRefVal.textContent = String(refA);
+    /** @type {HTMLElement} */ (document.getElementById('tunerRefVal')).textContent = String(refA);
     droneSync(); savePrefs();
 };
-document.getElementById('droneRefPlus').onclick = () => {
+/** @type {HTMLElement} */ (document.getElementById('droneRefPlus')).onclick = () => {
     refA = Math.min(480, refA + 1);
-    droneRefVal.textContent = refA;
-    document.getElementById('tunerRefVal').textContent = refA;
+    droneRefVal.textContent = String(refA);
+    /** @type {HTMLElement} */ (document.getElementById('tunerRefVal')).textContent = String(refA);
     droneSync(); savePrefs();
 };
-document.getElementById('droneOctaveMinus').onclick = () => {
+/** @type {HTMLElement} */ (document.getElementById('droneOctaveMinus')).onclick = () => {
     const v = Math.max(1, (parseInt(droneOctaveInput.value)||4) - 1);
-    droneOctaveInput.value = v; droneOctaveVal.textContent = v; droneState.octave=v; droneSync();
+    droneOctaveInput.value = String(v); droneOctaveVal.textContent = String(v); droneState.octave=v; droneSync();
 };
-document.getElementById('droneOctavePlus').onclick = () => {
+/** @type {HTMLElement} */ (document.getElementById('droneOctavePlus')).onclick = () => {
     const v = Math.min(6, (parseInt(droneOctaveInput.value)||4) + 1);
-    droneOctaveInput.value = v; droneOctaveVal.textContent = v; droneState.octave=v; droneSync();
+    droneOctaveInput.value = String(v); droneOctaveVal.textContent = String(v); droneState.octave=v; droneSync();
 };
 
 // Volume slider
-document.getElementById('droneVolume').value = droneState.volume;
-document.getElementById('droneVolume').oninput = e => {
-    droneState.volume = parseFloat(e.target.value);
+const droneVolumeEl = /** @type {HTMLInputElement} */ (document.getElementById('droneVolume'));
+droneVolumeEl.value = String(droneState.volume);
+droneVolumeEl.oninput = e => {
+    droneState.volume = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
     if(droneMaster) droneMaster.gain.value = droneState.volume;
     savePrefs();
 };
 
 // Tuning + wave switches — restore saved state
-['tuningSwitch','colorSwitch'].forEach(id => {
-    const key = id==='tuningSwitch' ? 'tuning' : 'color';
-    document.querySelectorAll(`#${id} button`).forEach(b => b.classList.toggle('active', b.dataset.val===droneState[key]));
-    document.getElementById(id).onclick = e => {
-        if(e.target.tagName!=='BUTTON') return;
-        document.querySelectorAll(`#${id} button`).forEach(b=>b.classList.remove('active'));
-        e.target.classList.add('active');
-        droneState[key]=e.target.dataset.val; droneSync();
+[['tuningSwitch', 'tuning'], ['colorSwitch', 'color']].forEach(([id, key]) => {
+    /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll(`#${id} button`)).forEach(
+        b => b.classList.toggle('active', b.dataset.val === /** @type {any} */ (droneState)[key]));
+    /** @type {HTMLElement} */ (document.getElementById(id)).onclick = e => {
+        const btn = /** @type {HTMLButtonElement} */ (e.target);
+        if(btn.tagName!=='BUTTON') return;
+        /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll(`#${id} button`)).forEach(
+            b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        /** @type {any} */ (droneState)[key] = btn.dataset.val; droneSync();
     };
 });
 
 // Details toggle
-const detailsBtn = document.getElementById('detailsToggle');
-const debugEl    = document.getElementById('debug-console');
+const detailsBtn = /** @type {HTMLElement} */ (document.getElementById('detailsToggle'));
+const debugEl    = /** @type {HTMLElement} */ (document.getElementById('debug-console'));
 detailsBtn.onclick = () => {
     const open = debugEl.style.display !== 'none';
     debugEl.style.display = open ? 'none' : 'block';
@@ -397,13 +452,16 @@ detailsBtn.onclick = () => {
 };
 
 let metroRunning = false;
+/** @type {MetronomePrefs | {}} */
 let currentMetroPrefs = {};
+/** @type {MetronomeAPI | null} */
 let metronome = null;
+/** @type {TunerAPI | null} */
 let tuner = null;
 let recorderRunning = false;
 let tunerRunning = false;
 
-document.getElementById('app-version-footer').textContent = APP_VERSION;
+/** @type {HTMLElement} */ (document.getElementById('app-version-footer')).textContent = APP_VERSION;
 
 // ─── INIT ────────────────────────────────────────────────────
 initDB().then(()=>{
@@ -427,7 +485,7 @@ initDB().then(()=>{
     });
     droneSync();
     initRecorder({
-        db,
+        db: /** @type {IDBDatabase} */ (db),
         getCtx,
         onRecordingChange: (v) => { recorderRunning = v; updateWakeLock(); },
         getMicStream,
@@ -439,7 +497,7 @@ initDB().then(()=>{
         getRefA: () => refA,
         onRefAChange: (newVal) => {
             refA = newVal;
-            document.getElementById('droneRefVal').textContent = newVal;
+            /** @type {HTMLElement} */ (document.getElementById('droneRefVal')).textContent = String(newVal);
             droneSync(); savePrefs();
         },
         onRunningChange: (isRunning) => { tunerRunning = isRunning; updateWakeLock(); },
@@ -453,8 +511,11 @@ initDB().then(()=>{
 });
 
 // ─── CARD DRAG-TO-REORDER ─────────────────────────────────────
+/** Sets up pointer-based drag-to-reorder for feature cards with auto-scroll. */
 function initCardDrag() {
+    /** @type {HTMLElement | null} */
     let dragging = null;
+    /** @type {number | null} */
     let scrollRaf = null;
     let hasMoved = false;
     const DRAG_THRESHOLD = 5; // px of movement before we consider it a real drag
@@ -537,14 +598,14 @@ function initCardDrag() {
         dragging = null;
     }
 
-    document.querySelectorAll('.drag-handle').forEach(handle => {
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.drag-handle')).forEach(handle => {
         handle.addEventListener('pointerdown', e => {
             e.preventDefault();
             dragging = handle.closest('.card');
             hasMoved = false;
             startX = e.clientX;
             startY = e.clientY;
-            dragging.classList.add('dragging');
+            if (dragging) dragging.classList.add('dragging');
             handle.setPointerCapture(e.pointerId);
         });
         handle.addEventListener('pointermove', e => {
@@ -570,6 +631,7 @@ function initCardDrag() {
 }
 
 // ─── CARD COLLAPSE ───────────────────────────────────────────────────────────
+/** Restores collapsed card state from prefs and wires up collapse toggle buttons. */
 function initCardCollapse() {
     const prefs0 = loadPrefs();
     const collapsed = new Set(prefs0.collapsedCards ?? []);

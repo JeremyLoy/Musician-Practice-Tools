@@ -2,7 +2,8 @@
   "name": "musicians-toolkit",
   "private": true,
   "devDependencies": {
-    "@playwright/test": "^1.49.0"
+    "@playwright/test": "^1.49.0",
+    "typescript": "^6.0.2"
   },
   "dependencies": {
     "pitchfinder": "2.3.4"

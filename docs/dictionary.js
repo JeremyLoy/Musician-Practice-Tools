@@ -1,7 +1,8 @@
 // Musical Dictionary — sourced from Wikipedia Glossary of Music Terminology
 // Each entry: { term, lang, def }
 // lang codes: IT = Italian, DE = German, FR = French, EN = English, LA = Latin, ES = Spanish
-export default [
+/** @type {DictEntry[]} */
+const DICT = [
   { term: "Schalltrichter auf", lang: "DE", normTerm: "schalltrichter auf", def: "Bells up — raise the bell of the instrument in the air; both a visual effect and a performance direction that projects the sound outward for a brighter, more penetrating tone", normDef: "bells up — raise the bell of the instrument in the air; both a visual effect and a performance direction that projects the sound outward for a brighter, more penetrating tone" },
 
   // ── Italian: Tempo ──────────────────────────────────────────
@@ -376,3 +377,4 @@ export default [
   { term: "Tutti", lang: "LA", normTerm: "tutti", def: "All — the full ensemble plays together", normDef: "all — the full ensemble plays together" },
   { term: "Bis", lang: "LA", normTerm: "bis", def: "Twice — repeat the relevant passage", normDef: "twice — repeat the relevant passage" },
 ];
+export default DICT;

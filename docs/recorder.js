@@ -1,18 +1,32 @@
+// @ts-check
 // ─── AUDIO RECORDER ──────────────────────────────────────────────────────────
 
 // ─── Pure exports (testable in isolation) ────────────────────────────────────
 
+/**
+ * Detects the best supported audio MIME type for MediaRecorder.
+ * @returns {string} Supported MIME type string, or empty string as fallback.
+ */
 export function getSupportedMimeType() {
     const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus', ''];
     return types.find(t => !t || MediaRecorder.isTypeSupported(t)) || '';
 }
 
+/**
+ * Converts a MIME type string to a file extension.
+ * @param {string} mime
+ * @returns {'mp4' | 'ogg' | 'webm'}
+ */
 export function mimeToExt(mime) {
     if (mime.includes('mp4')) return 'mp4';
     if (mime.includes('ogg')) return 'ogg';
     return 'webm';
 }
 
+/**
+ * Generates an automatic name for a new recording based on current date/time.
+ * @returns {string} e.g. "Mar 26 2:30 PM"
+ */
 export function getAutoName() {
     const now = new Date();
     const d = now.toLocaleDateString([], { month: 'short', day: 'numeric' });
@@ -22,14 +36,19 @@ export function getAutoName() {
 
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
+/**
+ * Initializes the audio recorder module: MediaRecorder, waveform display, memo storage and playback.
+ * @param {RecorderInitOptions} options
+ */
 export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, releaseMicStream }) {
     // All state encapsulated in closure
     let recorder, chunks = [], liveAnimFrame = null, liveAnalyser = null, memoUrls = [];
     let stream = null;
 
+    /** Draws a live waveform on the canvas during recording. */
     function drawLiveWaveform() {
-        const canvas = document.getElementById('liveWaveform');
-        const c2d = canvas.getContext('2d');
+        const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('liveWaveform'));
+        const c2d = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
         canvas.width = canvas.offsetWidth;
         const buf = new Uint8Array(liveAnalyser.fftSize);
         (function draw() {
@@ -48,25 +67,32 @@ export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, rele
         })();
     }
 
+    /** Stops the live waveform animation and clears the canvas. */
     function stopLiveWaveform() {
         if (liveAnimFrame) { cancelAnimationFrame(liveAnimFrame); liveAnimFrame = null; }
         liveAnalyser = null;
-        const canvas = document.getElementById('liveWaveform');
+        const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('liveWaveform'));
         canvas.style.display = 'none';
-        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d')).clearRect(0, 0, canvas.width, canvas.height);
     }
 
+    /**
+     * Persists a renamed memo to IndexedDB.
+     * @param {Memo} m - The memo object to update.
+     * @param {string} name - New name for the memo.
+     */
     function saveMemoName(m, name) {
         m.name = name.trim() || m.name;
         const tx = db.transaction('memos', 'readwrite');
         tx.objectStore('memos').put(m);
     }
 
+    /** Renders all saved memos from IndexedDB with WaveSurfer playback and rename/delete controls. */
     function renderMemos() {
         memoUrls.forEach(u => URL.revokeObjectURL(u)); memoUrls = [];
-        const list = document.getElementById('memoList'); list.innerHTML = '';
+        const list = /** @type {HTMLElement} */ (document.getElementById('memoList')); list.innerHTML = '';
         db.transaction('memos').objectStore('memos').getAll().onsuccess = e => {
-            e.target.result.sort((a, b) => b.ts - a.ts).forEach(m => {
+            /** @type {Memo[]} */ (/** @type {IDBRequest} */ (e.target).result).sort((a, b) => b.ts - a.ts).forEach(m => {
                 const mime = m.mimeType || (m.blob && m.blob.type) || 'audio/webm';
                 const ext = mimeToExt(mime);
                 // Create a correctly-typed blob URL — critical for iOS to decode it
@@ -91,7 +117,7 @@ export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, rele
 
                 // Use MediaElement backend: lets the browser's native <audio> handle decoding,
                 // which is the only reliable approach on iOS Safari for blob URLs.
-                const ws = WaveSurfer.create({
+                const ws = window.WaveSurfer.create({
                     container: `#w-${m.id}`,
                     waveColor: '#475569',
                     progressColor: '#22c55e',
@@ -111,9 +137,9 @@ export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, rele
                     a.click();
                 };
 
-                const lbl = document.getElementById(`lbl-${m.id}`);
-                const inp = document.getElementById(`inp-${m.id}`);
-                const ren = document.getElementById(`ren-${m.id}`);
+                const lbl = /** @type {HTMLElement} */ (document.getElementById(`lbl-${m.id}`));
+                const inp = /** @type {HTMLInputElement} */ (document.getElementById(`inp-${m.id}`));
+                const ren = /** @type {HTMLElement} */ (document.getElementById(`ren-${m.id}`));
                 let renaming = false;
 
                 function enterRename() {
@@ -136,11 +162,12 @@ export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, rele
         };
     }
 
-    document.getElementById('recordToggle').onclick = async function() {
+    const recordBtn = /** @type {HTMLElement} */ (document.getElementById('recordToggle'));
+    recordBtn.onclick = async () => {
         if (recorder?.state === 'recording') {
             recorder.stop(); stopLiveWaveform();
-            this.textContent = '🎙️ Start Recording'; this.classList.remove('is-active');
-            document.getElementById('rec-status').textContent = '';
+            recordBtn.textContent = '🎙️ Start Recording'; recordBtn.classList.remove('is-active');
+            /** @type {HTMLElement} */ (document.getElementById('rec-status')).textContent = '';
             onRecordingChange(false);
             return;
         }
@@ -163,12 +190,12 @@ export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, rele
         const ctx = getCtx();
         liveAnalyser = ctx.createAnalyser(); liveAnalyser.fftSize = 2048;
         ctx.createMediaStreamSource(stream).connect(liveAnalyser);
-        const canvas = document.getElementById('liveWaveform');
+        const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('liveWaveform'));
         canvas.style.display = 'block'; drawLiveWaveform();
         // timeslice=250ms ensures data flows on iOS (which may not fire ondataavailable without it)
         recorder.start(250);
-        this.textContent = '⏹️ Stop Recording'; this.classList.add('is-active');
-        document.getElementById('rec-status').textContent = '● Recording...';
+        recordBtn.textContent = '⏹️ Stop Recording'; recordBtn.classList.add('is-active');
+        /** @type {HTMLElement} */ (document.getElementById('rec-status')).textContent = '● Recording...';
         onRecordingChange(true);
     };
 

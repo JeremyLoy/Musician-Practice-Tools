@@ -1,9 +1,22 @@
+// @ts-check
 import DICT from './dictionary.js';
 
+/**
+ * Normalizes a string by removing diacritics and lowercasing.
+ * @param {string} s
+ * @returns {string}
+ */
 export function normStr(s) {
     return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
+/**
+ * Scores how well a needle matches a haystack string.
+ * Returns 0 for no match, 0.5 for character-sequence match, 2+ for substring match.
+ * @param {string} haystack - The string to search within.
+ * @param {string} needle - The search term.
+ * @returns {number} Score from 0 (no match) to ~3 (exact start match).
+ */
 export function fuzzyScore(haystack, needle) {
     if (haystack.includes(needle)) return 2 + 1 / (haystack.indexOf(needle) + 1);
     let hi = 0;
@@ -15,6 +28,11 @@ export function fuzzyScore(haystack, needle) {
     return 0.5;
 }
 
+/**
+ * Renders a single dictionary entry as an HTML string.
+ * @param {DictEntry} e
+ * @returns {string}
+ */
 function dictItemHTML(e) {
     return `<div class="dict-item">
             <span class="dict-term">${e.term}</span>
@@ -23,6 +41,10 @@ function dictItemHTML(e) {
         </div>`;
 }
 
+/**
+ * Filters and renders dictionary entries matching the search query.
+ * @param {string} query - User search input (may be empty to show all).
+ */
 function renderDict(query) {
     const q = normStr(query.trim());
     const el = document.getElementById('dictResults');
@@ -42,7 +64,8 @@ function renderDict(query) {
     el.innerHTML = scored.map(({ e }) => dictItemHTML(e)).join('');
 }
 
+/** Initializes the dictionary module: wires up search input and renders all entries. */
 export function initDict() {
-    document.getElementById('dictSearch').addEventListener('input', e => renderDict(e.target.value));
+    document.getElementById('dictSearch')?.addEventListener('input', e => renderDict(/** @type {HTMLInputElement} */ (e.target).value));
     renderDict('');
 }
