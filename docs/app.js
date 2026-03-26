@@ -215,13 +215,14 @@ let cardGrid = null;
  */
 function getLogicalCardOrder() {
     if (cardGrid) {
-        const col1 = [...cardGrid.children[0].querySelectorAll('.card')];
-        const col2 = [...cardGrid.children[1].querySelectorAll('.card')];
+        const col1 = [.../** @type {Element} */ (cardGrid.children[0]).querySelectorAll('.card')];
+        const col2 = [.../** @type {Element} */ (cardGrid.children[1]).querySelectorAll('.card')];
+        /** @type {Element[]} */
         const order = [];
         const max = Math.max(col1.length, col2.length);
         for (let i = 0; i < max; i++) {
-            if (col1[i]) order.push(col1[i]);
-            if (col2[i]) order.push(col2[i]);
+            if (col1[i]) order.push(/** @type {Element} */ (col1[i]));
+            if (col2[i]) order.push(/** @type {Element} */ (col2[i]));
         }
         return order;
     }
@@ -241,9 +242,9 @@ function distributeCards() {
             const footer = document.getElementById('app-version-footer');
             document.body.insertBefore(cardGrid, footer);
         }
-        const [col1, col2] = cardGrid.children;
+        const [col1, col2] = /** @type {HTMLCollectionOf<Element>} */ (cardGrid.children);
         cards.forEach((card, i) => {
-            (i % 2 === 0 ? col1 : col2).appendChild(card);
+            /** @type {Element} */ (i % 2 === 0 ? col1 : col2).appendChild(card);
         });
     } else if (cardGrid) {
         const cards = getLogicalCardOrder();
@@ -401,7 +402,7 @@ noteNames.forEach((n,i) => {
         document.querySelectorAll('#rootGrid .btn-toggle').forEach(x=>x.classList.remove('active'));
         b.classList.add('active'); droneState.root=i; droneSync();
     };
-    document.getElementById('rootGrid').appendChild(b);
+    /** @type {HTMLElement} */ (document.getElementById('rootGrid')).appendChild(b);
 });
 
 // Build interval grid
@@ -417,7 +418,7 @@ droneRatios.forEach(rt => {
         }
         droneSync();
     };
-    document.getElementById('intervalGrid').appendChild(b);
+    /** @type {HTMLElement} */ (document.getElementById('intervalGrid')).appendChild(b);
 });
 
 const droneToggleBtn = /** @type {HTMLButtonElement} */ (document.getElementById('droneToggle'));
@@ -466,17 +467,17 @@ droneOctaveVal.textContent = String(droneState.octave);
 // Volume slider
 const droneVolumeEl = /** @type {HTMLInputElement} */ (document.getElementById('droneVolume'));
 droneVolumeEl.value = String(droneState.volume);
-droneVolumeEl.oninput = e => {
+droneVolumeEl.oninput = (/** @type {Event} */ e) => {
     droneState.volume = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
     if(droneMaster) droneMaster.gain.value = droneState.volume;
     savePrefs();
 };
 
 // Tuning + wave switches — restore saved state
-[['tuningSwitch', 'tuning'], ['colorSwitch', 'color']].forEach(([id, key]) => {
+/** @type {[string, string][]} */ ([['tuningSwitch', 'tuning'], ['colorSwitch', 'color']]).forEach(([id, key]) => {
     /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll(`#${id} button`)).forEach(
         b => b.classList.toggle('active', b.dataset.val === /** @type {any} */ (droneState)[key]));
-    /** @type {HTMLElement} */ (document.getElementById(id)).onclick = e => {
+    /** @type {HTMLElement} */ (document.getElementById(id)).onclick = (/** @type {Event} */ e) => {
         const btn = /** @type {HTMLButtonElement} */ (e.target);
         if(btn.tagName!=='BUTTON') return;
         /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll(`#${id} button`)).forEach(
@@ -571,12 +572,14 @@ function initCardDrag() {
         if (scrollRaf) { cancelAnimationFrame(scrollRaf); scrollRaf = null; }
     }
 
+    /** @param {number} direction */
     function startAutoScroll(direction) {
         stopAutoScroll();
         function step() { window.scrollBy(0, direction * SCROLL_SPEED); scrollRaf = requestAnimationFrame(step); }
         scrollRaf = requestAnimationFrame(step);
     }
 
+    /** @param {number} clientY */
     function tickAutoScroll(clientY) {
         if (clientY < SCROLL_ZONE) startAutoScroll(-1);
         else if (clientY > window.innerHeight - SCROLL_ZONE) startAutoScroll(1);
@@ -588,6 +591,10 @@ function initCardDrag() {
     // Find the best drop target using 2D position — works in both single-column
     // and multi-column (CSS columns) layouts. Tries a direct hit test first, then
     // falls back to the nearest card by Euclidean distance to its centre.
+    /**
+     * @param {number} clientX
+     * @param {number} clientY
+     */
     function findDropTarget(clientX, clientY) {
         const others = getCards();
         const hit = others.find(c => {
@@ -604,6 +611,10 @@ function initCardDrag() {
         return nearest;
     }
 
+    /**
+     * @param {number} clientX
+     * @param {number} clientY
+     */
     function updateDropIndicators(clientX, clientY) {
         getCards().forEach(c => c.classList.remove('drop-above', 'drop-below'));
         const target = findDropTarget(clientX, clientY);
@@ -613,6 +624,10 @@ function initCardDrag() {
         }
     }
 
+    /**
+     * @param {number} clientX
+     * @param {number} clientY
+     */
     function applyDrop(clientX, clientY) {
         const others = getCards();
         others.forEach(c => c.classList.remove('drop-above', 'drop-below'));
@@ -624,13 +639,13 @@ function initCardDrag() {
             // Two-column mode: reorder logically then redistribute
             const order = getLogicalCardOrder().filter(c => c !== dragging);
             const idx = order.indexOf(target);
-            order.splice(before ? idx : idx + 1, 0, dragging);
-            const [col1, col2] = cardGrid.children;
+            order.splice(before ? idx : idx + 1, 0, /** @type {Element} */ (dragging));
+            const [col1, col2] = /** @type {HTMLCollectionOf<Element>} */ (cardGrid.children);
             order.forEach((card, i) => {
-                (i % 2 === 0 ? col1 : col2).appendChild(card);
+                /** @type {Element} */ (i % 2 === 0 ? col1 : col2).appendChild(card);
             });
         } else {
-            target.parentNode.insertBefore(dragging, before ? target : target.nextSibling);
+            /** @type {ParentNode} */ (target.parentNode).insertBefore(/** @type {Element} */ (dragging), before ? target : target.nextSibling);
         }
     }
 
@@ -680,7 +695,7 @@ function initCardCollapse() {
     const prefs0 = loadPrefs();
     const collapsed = new Set(prefs0.collapsedCards ?? []);
     document.querySelectorAll('.card-collapse-btn').forEach(btn => {
-        const card = btn.closest('.card');
+        const card = /** @type {HTMLElement} */ (btn.closest('.card'));
         if (collapsed.has(card.id)) card.classList.add('collapsed');
         btn.addEventListener('click', () => {
             card.classList.toggle('collapsed');

@@ -64,7 +64,17 @@ export function getAutoName() {
  */
 export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, releaseMicStream }) {
     // All state encapsulated in closure
-    let recorder, chunks = [], liveAnimFrame = null, liveAnalyser = null, memoUrls = [];
+    /** @type {MediaRecorder | null} */
+    let recorder = null;
+    /** @type {Blob[]} */
+    let chunks = [];
+    /** @type {number | null} */
+    let liveAnimFrame = null;
+    /** @type {AnalyserNode | null} */
+    let liveAnalyser = null;
+    /** @type {string[]} */
+    let memoUrls = [];
+    /** @type {MediaStream | null} */
     let stream = null;
 
     /** Draws a live waveform on the canvas during recording. */
@@ -72,7 +82,7 @@ export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, rele
         const canvas = /** @type {HTMLCanvasElement} */ (document.getElementById('liveWaveform'));
         const c2d = /** @type {CanvasRenderingContext2D} */ (canvas.getContext('2d'));
         canvas.width = canvas.offsetWidth;
-        const buf = new Uint8Array(liveAnalyser.fftSize);
+        const buf = new Uint8Array(/** @type {AnalyserNode} */ (liveAnalyser).fftSize);
         (function draw() {
             if (!liveAnalyser) return;
             liveAnimFrame = requestAnimationFrame(draw);
@@ -82,7 +92,7 @@ export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, rele
             c2d.beginPath();
             const sw = canvas.width / buf.length; let x = 0;
             for (let i = 0; i < buf.length; i++) {
-                const y = (buf[i] / 128) * canvas.height / 2;
+                const y = (/** @type {number} */ (buf[i]) / 128) * canvas.height / 2;
                 i === 0 ? c2d.moveTo(x, y) : c2d.lineTo(x, y); x += sw;
             }
             c2d.lineTo(canvas.width, canvas.height / 2); c2d.stroke();
@@ -146,14 +156,14 @@ export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, rele
                     backend: 'MediaElement',
                     url
                 });
-                const pb = document.getElementById(`p-${m.id}`);
+                const pb = /** @type {HTMLElement} */ (document.getElementById(`p-${m.id}`));
                 ws.on('play', () => pb.textContent = '⏸ Pause');
                 ws.on('pause', () => pb.textContent = '▶ Play');
                 ws.on('finish', () => pb.textContent = '▶ Play');
                 // iOS: playPause must be triggered directly from user tap (already is via onclick)
                 pb.onclick = () => ws.playPause();
 
-                document.getElementById(`dl-${m.id}`).onclick = () => {
+                /** @type {HTMLElement} */ (document.getElementById(`dl-${m.id}`)).onclick = () => {
                     const a = document.createElement('a'); a.href = url;
                     a.download = `${(m.name || 'memo').replace(/[^\w\s\-]/g, '_').trim()}.${ext}`;
                     a.click();
@@ -201,7 +211,7 @@ export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, rele
         recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
         recorder.onstop = () => {
             releaseMicStream();
-            const actualMime = recorder.mimeType || mimeType || 'audio/webm';
+            const actualMime = recorder?.mimeType || mimeType || 'audio/webm';
             const blob = new Blob(chunks, { type: actualMime });
             const item = { id: Date.now().toString(), blob, mimeType: actualMime, ts: Date.now(), name: autoName };
             const tx = db.transaction('memos', 'readwrite');
@@ -221,7 +231,7 @@ export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, rele
         onRecordingChange(true);
     };
 
-    /** @type {any} */ (window).deleteMemo = id => {         // must stay on window for inline onclick
+    /** @type {any} */ (window).deleteMemo = /** @param {string} id */ (id) => {         // must stay on window for inline onclick
         if (!confirm('Delete this memo?')) return;
         const tx = db.transaction('memos', 'readwrite');
         tx.objectStore('memos').delete(id);

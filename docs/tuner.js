@@ -53,7 +53,7 @@ export function detectPitch(analyser, sampleRate) {
 
     // RMS silence gate (pitchfinder lacks one — keep ours)
     let rms = 0;
-    for (let i = 0; i < bufLen; i++) rms += buf[i] * buf[i];
+    for (let i = 0; i < bufLen; i++) rms += /** @type {number} */ (buf[i]) * /** @type {number} */ (buf[i]);
     if (Math.sqrt(rms / bufLen) < 0.01) return null;
 
     // Lazy-init YIN detector; recreate if sample rate changes
@@ -62,7 +62,7 @@ export function detectPitch(analyser, sampleRate) {
         _yinSampleRate = sampleRate;
     }
 
-    const freq = _yinDetector(buf);
+    const freq = /** @type {(buf: Float32Array) => number | null} */ (_yinDetector)(buf);
     return (freq && freq > 0) ? freq : null;
 }
 
@@ -75,7 +75,7 @@ export function detectPitch(analyser, sampleRate) {
  */
 export function freqToNoteInfo(freq, refA, overrideMidi = null) {
     const midi       = overrideMidi ?? Math.round(69 + 12 * Math.log2(freq / refA));
-    const noteName   = NOTES[((midi % 12) + 12) % 12];
+    const noteName   = /** @type {string} */ (NOTES[((midi % 12) + 12) % 12]);
     const octave     = Math.floor(midi / 12) - 1;
     const targetFreq = refA * Math.pow(2, (midi - 69) / 12);
     const cents      = 1200 * Math.log2(freq / targetFreq);
@@ -91,9 +91,9 @@ export function freqToNoteInfo(freq, refA, overrideMidi = null) {
  * @param {number | null} [lockedMidi=null] - Locked MIDI note for hysteresis.
  */
 function updateDisplay(freq, refA, lockedMidi = null) {
-    const nameEl   = document.getElementById('tunerNoteName');
-    const centsEl  = document.getElementById('tunerCentsDisplay');
-    const fillEl   = document.getElementById('tunerMeterFill');
+    const nameEl   = /** @type {HTMLElement} */ (document.getElementById('tunerNoteName'));
+    const centsEl  = /** @type {HTMLElement} */ (document.getElementById('tunerCentsDisplay'));
+    const fillEl   = /** @type {HTMLElement} */ (document.getElementById('tunerMeterFill'));
 
     if (freq === null) {
         nameEl.innerHTML = '—';
@@ -139,7 +139,7 @@ function updateDisplay(freq, refA, lockedMidi = null) {
  * @param {boolean} isRunning
  */
 function updateBtn(isRunning) {
-    const btn = document.getElementById('tunerToggle');
+    const btn = /** @type {HTMLElement} */ (document.getElementById('tunerToggle'));
     btn.textContent = isRunning ? '⏹ Stop Tuner' : '🎤 Start Tuner';
     btn.classList.toggle('is-active', isRunning);
 }
@@ -154,12 +154,19 @@ function updateBtn(isRunning) {
 export function initTuner({ getCtx, getRefA, onRefAChange, onRunningChange, getMicStream, releaseMicStream }) {
     // Closure state
     let running        = false;
+    /** @type {MediaStream | null} */
     let stream         = null;
+    /** @type {MediaStreamAudioSourceNode | null} */
     let source         = null;
+    /** @type {AnalyserNode | null} */
     let analyser       = null;
+    /** @type {number | null} */
     let rafId          = null;
+    /** @type {number[]} */
     let freqBuf        = [];
+    /** @type {number | null} */
     let lastMidi       = null;
+    /** @type {number | null} */
     let candidateMidi  = null;
     let candidateCount = 0;
 
@@ -183,7 +190,7 @@ export function initTuner({ getCtx, getRefA, onRefAChange, onRunningChange, getM
             // Wait for half the buffer to fill before showing anything
             if (freqBuf.length >= Math.ceil(BUF_SIZE / 2)) {
                 const sorted = [...freqBuf].sort((a, b) => a - b);
-                const median = sorted[Math.floor(sorted.length / 2)];
+                const median = /** @type {number} */ (sorted[Math.floor(sorted.length / 2)]);
 
                 // Hysteresis: only commit to a new note after NOTE_HOLD confirmations
                 const { midi } = freqToNoteInfo(median, getRefA());
@@ -218,12 +225,12 @@ export function initTuner({ getCtx, getRefA, onRefAChange, onRunningChange, getM
         // context is resumed while we are still in the synchronous click-handler frame.
         const ctx = getCtx();
 
-        const statusEl = document.getElementById('tunerStatus');
+        const statusEl = /** @type {HTMLElement} */ (document.getElementById('tunerStatus'));
         statusEl.textContent = 'Requesting microphone…';
         statusEl.className   = 'tuner-status';
         try {
             stream = await getMicStream();
-        } catch (err) {
+        } catch (/** @type {any} */ err) {
             statusEl.textContent = err.name === 'NotAllowedError'
                 ? 'Microphone access denied. Please allow mic access and try again.'
                 : `Microphone error: ${err.message}`;
@@ -254,8 +261,8 @@ export function initTuner({ getCtx, getRefA, onRefAChange, onRunningChange, getM
         running = false;
         onRunningChange(false);
         if (rafId)    { cancelAnimationFrame(rafId); rafId = null; }
-        if (source)   { try { source.disconnect(); }   catch(e) {} source = null; }
-        if (analyser) { try { analyser.disconnect(); } catch(e) {} analyser = null; }
+        if (source)   { try { source.disconnect(); }   catch(_e) {} source = null; }
+        if (analyser) { try { analyser.disconnect(); } catch(_e) {} analyser = null; }
         stream = null;
         releaseMicStream();
         freqBuf = [];
@@ -264,8 +271,8 @@ export function initTuner({ getCtx, getRefA, onRefAChange, onRunningChange, getM
         candidateCount = 0;
         updateDisplay(null, getRefA());
         updateBtn(false);
-        document.getElementById('tunerStatus').textContent = '';
-        document.getElementById('tunerStatus').className   = 'tuner-status';
+        /** @type {HTMLElement} */ (document.getElementById('tunerStatus')).textContent = '';
+        /** @type {HTMLElement} */ (document.getElementById('tunerStatus')).className   = 'tuner-status';
     }
 
     // Wire up tuner toggle

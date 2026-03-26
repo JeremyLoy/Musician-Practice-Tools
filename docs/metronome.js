@@ -64,7 +64,7 @@ export function meterToString(m) {
 export function parseTsInput(str) {
     const m = str.trim().match(/^(\d+)\s*\/\s*(\d+)$/);
     if (!m) return null;
-    const n = parseInt(m[1]), d = parseInt(m[2]);
+    const n = parseInt(/** @type {string} */ (m[1])), d = parseInt(/** @type {string} */ (m[2]));
     if (n < 1 || n > 32 || d < 1 || d > 64) return null;
     return { groups: Array(n).fill(1), denom: d };
 }
@@ -76,6 +76,7 @@ export function parseTsInput(str) {
  * @returns {Pulse[]}
  */
 export function buildSchedule(bpm, meter) {
+    /** @type {Pulse[]} */
     const pulses = [];
     const beatSec = 60 / bpm;
     meter.groups.forEach(groupSize => {
@@ -104,8 +105,13 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
     let clickSound  = initialPrefs.clickSound;
     let meter       = initialPrefs.meter;
 
-    let metroRunning = false, nextBeat = 0, schedTimer, pulseIndex = 0;
-    let schedPulses = [], totalPulses = 0;
+    let metroRunning = false, nextBeat = 0, pulseIndex = 0;
+    /** @type {ReturnType<typeof setTimeout> | undefined} */
+    let schedTimer;
+    /** @type {Pulse[]} */
+    let schedPulses = [];
+    let totalPulses = 0;
+    /** @type {GainNode | null} */
     let metroMaster = null;
 
     /** Emits current metronome preferences via the onPrefsChange callback. */
@@ -302,7 +308,7 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
         const ctx = getCtx(), out = getMetroMaster();
         const vol = isAccent ? 1.0 : 0.62;
         const dur = isAccent ? 0.28 : 0.18;
-        [[562, 1], [845, 0.6]].forEach(([f, fvol]) => {
+        /** @type {[number, number][]} */ ([[562, 1], [845, 0.6]]).forEach(([f, fvol]) => {
             const o = ctx.createOscillator(), g = ctx.createGain();
             o.type = 'square'; o.frequency.value = f;
             const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f * 1.4; bp.Q.value = 0.8;
@@ -384,7 +390,7 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
     function sched() {
         const ctx = getCtx();
         while (nextBeat < ctx.currentTime + 0.1) {
-            const pulse = schedPulses[pulseIndex % totalPulses];
+            const pulse = /** @type {Pulse} */ (schedPulses[pulseIndex % totalPulses]);
             const isDownbeat = (pulseIndex % totalPulses === 0);
             if (metroSound) {
                 if (pulse.isGroupBeat) playBeat(nextBeat, isDownbeat);
@@ -455,11 +461,11 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
     let tapResetTimer = null;
     /** @type {HTMLElement} */ (document.getElementById('tapBtn')).onclick = () => {
         const now = performance.now();
-        clearTimeout(tapResetTimer);
-        if (tapTimes.length && now - tapTimes[tapTimes.length - 1] > 2000) tapTimes = [];
+        if (tapResetTimer !== null) clearTimeout(tapResetTimer);
+        if (tapTimes.length && now - (tapTimes[tapTimes.length - 1] ?? 0) > 2000) tapTimes = [];
         tapTimes.push(now);
         if (tapTimes.length >= 2) {
-            const gaps = tapTimes.slice(1).map((t, i) => t - tapTimes[i]);
+            const gaps = tapTimes.slice(1).map((t, i) => t - /** @type {number} */ (tapTimes[i]));
             updateBPM(Math.round(60000 / (gaps.reduce((a, b) => a + b) / gaps.length)));
             if (metroRunning) { clearTimeout(schedTimer); pulseIndex = 0; nextBeat = getCtx().currentTime; sched(); }
         }
@@ -471,13 +477,15 @@ export function initMetronome({ getCtx, initialPrefs, onRunningChange, onPrefsCh
     (function() {
         const outer = wheelEl.parentElement;
         let dragging = false, lastAngle = 0, fracBpm = 0;
-        const getAngle = e => {
-            const r = outer.getBoundingClientRect();
-            const px = e.touches ? e.touches[0].clientX : e.clientX;
-            const py = e.touches ? e.touches[0].clientY : e.clientY;
+        /** @param {MouseEvent | TouchEvent} e */
+        const getAngle = (e) => {
+            const r = /** @type {HTMLElement} */ (outer).getBoundingClientRect();
+            const px = 'touches' in e ? /** @type {Touch} */ (e.touches[0]).clientX : e.clientX;
+            const py = 'touches' in e ? /** @type {Touch} */ (e.touches[0]).clientY : e.clientY;
             return Math.atan2(py - (r.top + r.height / 2), px - (r.left + r.width / 2)) * (180 / Math.PI);
         };
-        const onMove = e => {
+        /** @param {MouseEvent | TouchEvent} e */
+        const onMove = (e) => {
             if (!dragging) return;
             const angle = getAngle(e);
             let d = angle - lastAngle; lastAngle = angle;

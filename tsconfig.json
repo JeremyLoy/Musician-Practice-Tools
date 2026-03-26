@@ -9,14 +9,13 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
 
-    "strict": false,
-    "noImplicitAny": false,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
+    "strict": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "noUnusedParameters": true,
-    "noUnusedLocals": true
+    "noUnusedLocals": true,
+    "noUncheckedIndexedAccess": true,
+    "useUnknownInCatchVariables": true
   },
   "include": ["docs/**/*.js"],
   "exclude": ["docs/wavesurfer.min.js", "docs/pitchfinder.min.js"]

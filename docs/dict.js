@@ -22,7 +22,7 @@ export function fuzzyScore(haystack, needle) {
     if (haystack.includes(needle)) return 2 + 1 / (haystack.indexOf(needle) + 1);
     let hi = 0;
     for (let i = 0; i < needle.length; i++) {
-        const idx = haystack.indexOf(needle[i], hi);
+        const idx = haystack.indexOf(/** @type {string} */ (needle[i]), hi);
         if (idx === -1) return 0;
         hi = idx + 1;
     }
@@ -48,7 +48,7 @@ function dictItemHTML(e) {
  */
 function renderDict(query) {
     const q = normStr(query.trim());
-    const el = document.getElementById('dictResults');
+    const el = /** @type {HTMLElement} */ (document.getElementById('dictResults'));
     if (!q) {
         el.innerHTML = DICT.map(dictItemHTML).join('');
         return;
