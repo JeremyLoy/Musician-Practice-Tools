@@ -292,15 +292,6 @@ function getDroneMaster() {
     return droneMaster;
 }
 
-/**
- * Returns a label string for the active intervals (e.g. "P5+Oct").
- * @returns {string}
- */
-function getIntervalLabel() {
-    return [...droneState.intervals].sort((a,b)=>a-b)
-        .map(s => /** @type {DroneRatio} */ (droneRatios.find(r=>r.s===s)).n).join('+');
-}
-
 /** Updates the debug console with current drone frequencies and ratios. */
 function updateDroneDebug() {
     const rootFreq = (refA * Math.pow(2,(droneState.root-9)/12)) * Math.pow(2,droneState.octave-4);

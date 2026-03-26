@@ -1,5 +1,5 @@
 // @ts-check
-/** @import { Meter, Pulse, MetronomeInitOptions, MetronomeAPI, MetronomePrefs } from './types.js' */
+/** @import { Meter, Pulse, MetronomeInitOptions, MetronomeAPI } from './types.js' */
 // ─── METRONOME ──────────────────────────────────────────────────────────────
 
 // ─── Pure exports (testable in isolation) ────────────────────────────────────
