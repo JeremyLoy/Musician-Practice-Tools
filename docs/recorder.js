@@ -1,6 +1,27 @@
 // @ts-check
-/** @import { Memo, RecorderInitOptions } from './types.js' */
 // ─── AUDIO RECORDER ──────────────────────────────────────────────────────────
+
+// ─── Type Definitions ────────────────────────────────────────────────────────
+
+/**
+ * A saved audio memo in IndexedDB.
+ * @typedef {object} Memo
+ * @property {string} id - Unique ID (timestamp string).
+ * @property {Blob} blob - Raw audio blob.
+ * @property {string} mimeType - MIME type of the recording.
+ * @property {number} ts - Recording timestamp (ms since epoch).
+ * @property {string} name - User-assigned or auto-generated name.
+ */
+
+/**
+ * Options for initializing the recorder module.
+ * @typedef {object} RecorderInitOptions
+ * @property {IDBDatabase} db - IndexedDB database handle.
+ * @property {() => AudioContext} getCtx - Returns the shared AudioContext (creates lazily).
+ * @property {(recording: boolean) => void} onRecordingChange - Called when recording starts or stops.
+ * @property {() => Promise<MediaStream>} getMicStream - Returns the shared microphone MediaStream.
+ * @property {() => void} releaseMicStream - Releases the shared mic when both consumers are idle.
+ */
 
 // ─── Pure exports (testable in isolation) ────────────────────────────────────
 

@@ -1,6 +1,48 @@
 // @ts-check
-/** @import { Meter, Pulse, MetronomeInitOptions, MetronomeAPI } from './types.js' */
 // ─── METRONOME ──────────────────────────────────────────────────────────────
+
+// ─── Type Definitions ────────────────────────────────────────────────────────
+
+/**
+ * Metronome meter configuration.
+ * @typedef {object} Meter
+ * @property {number[]} groups - Pulse counts per beat group (e.g. [3,3] = 6/8, [2,2,3] = 7/8).
+ * @property {number} denom - Note value denominator (notation-only, doesn't affect timing).
+ * @property {number} subdivision - Sub-clicks per pulse: 1, 2, 3, or 4.
+ */
+
+/**
+ * A single pulse in the metronome schedule.
+ * @typedef {object} Pulse
+ * @property {boolean} isGroupBeat - True if this pulse is the first in its beat group.
+ * @property {number} subDur - Duration of this subdivision in seconds.
+ */
+
+/**
+ * Metronome preferences emitted via onPrefsChange callback.
+ * @typedef {object} MetronomePrefs
+ * @property {number} bpm
+ * @property {Meter} meter
+ * @property {boolean} metroSound
+ * @property {boolean} metroLight
+ * @property {number} metroVolume
+ * @property {string} clickSound
+ */
+
+/**
+ * Options for initializing the metronome module.
+ * @typedef {object} MetronomeInitOptions
+ * @property {() => AudioContext} getCtx - Returns the shared AudioContext (creates lazily).
+ * @property {MetronomePrefs} initialPrefs - Initial metronome settings.
+ * @property {(running: boolean) => void} onRunningChange - Called when metronome starts or stops.
+ * @property {(prefs: MetronomePrefs) => void} onPrefsChange - Called when any metronome preference changes.
+ */
+
+/**
+ * Public API returned by initMetronome().
+ * @typedef {object} MetronomeAPI
+ * @property {() => void} handleVisibilityResume - Re-syncs timing after the page becomes visible again.
+ */
 
 // ─── Pure exports (testable in isolation) ────────────────────────────────────
 

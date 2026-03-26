@@ -1,6 +1,33 @@
 // @ts-check
-/** @import { NoteInfo, TunerInitOptions, TunerAPI } from './types.js' */
 // ─── CHROMATIC TUNER ─────────────────────────────────────────────────────────
+
+// ─── Type Definitions ────────────────────────────────────────────────────────
+
+/**
+ * Note information returned by the tuner's frequency analysis.
+ * @typedef {object} NoteInfo
+ * @property {string} noteName - Note name with Unicode accidentals (e.g. "C♯", "E♭").
+ * @property {number} octave - Octave number.
+ * @property {number} cents - Deviation from target pitch in cents.
+ * @property {number} midi - MIDI note number.
+ */
+
+/**
+ * Options for initializing the tuner module.
+ * @typedef {object} TunerInitOptions
+ * @property {() => AudioContext} getCtx - Returns the shared AudioContext (creates lazily).
+ * @property {() => number} getRefA - Returns the current A4 reference frequency in Hz.
+ * @property {(newVal: number) => void} onRefAChange - Called when the user changes the reference frequency.
+ * @property {(running: boolean) => void} onRunningChange - Called when the tuner starts or stops.
+ * @property {() => Promise<MediaStream>} getMicStream - Returns the shared microphone MediaStream.
+ * @property {() => void} releaseMicStream - Releases the shared mic when both consumers are idle.
+ */
+
+/**
+ * Public API returned by initTuner().
+ * @typedef {object} TunerAPI
+ * @property {() => void} stop - Stops the tuner and releases resources.
+ */
 /** @type {readonly string[]} */
 const NOTES    = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
 const BUF_SIZE  = 8;   // rolling median window (~133 ms @ 60 fps)

@@ -1,5 +1,14 @@
-/** @import { DictEntry } from './types.js' */
 // Musical Dictionary — sourced from Wikipedia Glossary of Music Terminology
+
+/**
+ * Musical dictionary entry.
+ * @typedef {object} DictEntry
+ * @property {string} term - Musical term in its original language.
+ * @property {'IT' | 'DE' | 'FR' | 'EN' | 'LA' | 'ES'} lang - Language code.
+ * @property {string} def - English definition.
+ * @property {string} normTerm - Normalized (lowercase, no diacritics) version of term.
+ * @property {string} normDef - Normalized (lowercase, no diacritics) version of definition.
+ */
 // Each entry: { term, lang, def }
 // lang codes: IT = Italian, DE = German, FR = French, EN = English, LA = Latin, ES = Spanish
 /** @type {DictEntry[]} */

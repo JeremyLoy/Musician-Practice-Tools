@@ -1,9 +1,61 @@
 // @ts-check
-/** @import { DroneState, DroneRatio, ActiveOsc, SavedPrefs, MetronomePrefs, MetronomeAPI, TunerAPI } from './types.js' */
+/** @import { MetronomePrefs, MetronomeAPI, Meter } from './metronome.js' */
+/** @import { TunerAPI } from './tuner.js' */
 import { initDict } from './dict.js';
 import { initTuner } from './tuner.js';
 import { initRecorder } from './recorder.js';
 import { initMetronome } from './metronome.js';
+
+// ─── Type Definitions ────────────────────────────────────────────────────────
+
+/**
+ * Drone machine state.
+ * @typedef {object} DroneState
+ * @property {number} root - Root note as semitone index (0=C, 9=A, 11=B).
+ * @property {Set<number>} intervals - Active interval semitone offsets.
+ * @property {'just' | 'equal'} tuning - Tuning system.
+ * @property {OscillatorType} color - Oscillator waveform type (named "color" for historical reasons).
+ * @property {boolean} running - Whether the drone is currently playing.
+ * @property {number} octave - Octave (1–6).
+ * @property {number} volume - Volume (0–1).
+ */
+
+/**
+ * Drone interval ratio entry.
+ * @typedef {object} DroneRatio
+ * @property {string} n - Short interval name (e.g. "P5", "m3").
+ * @property {number} s - Semitone offset from root.
+ * @property {number} r - Just intonation frequency ratio.
+ * @property {string} f - Ratio as fraction string (e.g. "3/2").
+ */
+
+/**
+ * An active drone oscillator with its gain node.
+ * @typedef {object} ActiveOsc
+ * @property {OscillatorNode} osc
+ * @property {GainNode} g
+ */
+
+/**
+ * Persisted user preferences (stored in localStorage).
+ * @typedef {object} SavedPrefs
+ * @property {number} [bpm]
+ * @property {Meter} [meter]
+ * @property {boolean} [metroSound]
+ * @property {boolean} [metroLight]
+ * @property {number} [metroVolume]
+ * @property {string} [clickSound]
+ * @property {number} [droneRoot]
+ * @property {number[]} [droneIntervals]
+ * @property {string} [droneTuning]
+ * @property {string} [droneColor]
+ * @property {number} [droneOctave]
+ * @property {number} [droneVolume]
+ * @property {number} [refA]
+ * @property {number} [droneRef] - Deprecated. Use refA instead.
+ * @property {string[]} [cardOrder]
+ * @property {string[]} [collapsedCards]
+ */
 
 // ─── VERSION ─────────────────────────────────────────────────
 // Keep in sync with CACHE_VERSION in sw.js. Format: YYYYMMDD-HHMM (24h UTC).
