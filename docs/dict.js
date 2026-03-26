@@ -1,4 +1,5 @@
 // @ts-check
+/** @import { DictEntry } from './types.js' */
 import DICT from './dictionary.js';
 
 /**

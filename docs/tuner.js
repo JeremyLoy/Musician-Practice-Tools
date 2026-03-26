@@ -1,4 +1,5 @@
 // @ts-check
+/** @import { NoteInfo, TunerInitOptions, TunerAPI } from './types.js' */
 // ─── CHROMATIC TUNER ─────────────────────────────────────────────────────────
 /** @type {readonly string[]} */
 const NOTES    = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
@@ -30,7 +31,7 @@ export function detectPitch(analyser, sampleRate) {
 
     // Lazy-init YIN detector; recreate if sample rate changes
     if (!_yinDetector || _yinSampleRate !== sampleRate) {
-        _yinDetector = window.Pitchfinder.YIN({ sampleRate, threshold: 0.15 });
+        _yinDetector = /** @type {any} */ (window).Pitchfinder.YIN({ sampleRate, threshold: 0.15 });
         _yinSampleRate = sampleRate;
     }
 

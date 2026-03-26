@@ -38,7 +38,7 @@ docs/manifest.json     — PWA manifest (name, icons, display mode)
 docs/sw.js             — service worker (cache-first offline strategy)
 docs/wavesurfer.min.js — WaveSurfer.js v7 bundled locally (do not CDN-ify)
 docs/pitchfinder.min.js — pitchfinder v2.3.4 bundled locally (YIN pitch detection)
-docs/types.d.ts        — TypeScript type definitions for JSDoc annotations
+docs/types.js          — JSDoc @typedef type definitions shared across modules
 docs/icon-192.png      — home screen icon (192×192)
 docs/icon-512.png      — home screen icon (512×512)
 tsconfig.json          — TypeScript config for checkJs type checking (no emit)
@@ -120,19 +120,20 @@ Single breakpoint at `max-width: 600px`. At this width:
 
 ## Type Checking
 
-All JavaScript files under `docs/` are type-checked using TypeScript's `checkJs` mode. Type definitions live in `docs/types.d.ts` and are referenced via JSDoc annotations in each `.js` file.
+All JavaScript files under `docs/` are type-checked using TypeScript's `checkJs` mode. Type definitions live in `docs/types.js` as JSDoc `@typedef` declarations and are imported via `/** @import { TypeName } from './types.js' */` at the top of each file.
 
 ### Running the type checker
 
-    npx tsc --noEmit
+    bun x tsc --noEmit
 
 This must exit with zero errors.
 
 ### Rules
 
 - Every new function must have a JSDoc `@param` / `@returns` annotation.
-- Shared state objects and interfaces are defined in `docs/types.d.ts`.
+- Shared types are defined as `@typedef` in `docs/types.js`. Import them with `/** @import { … } from './types.js' */`.
 - Use `/** @type {…} */` casts for `document.getElementById()` results (e.g. `/** @type {HTMLInputElement} */`).
+- For vendor globals not in the standard DOM types (e.g. `window.WaveSurfer`, `window.Pitchfinder`, `navigator.audioSession`), use `/** @type {any} */ (window).Foo` casts at the point of use.
 - `docs/sw.js` uses `@ts-nocheck` because the Service Worker global scope differs from the DOM.
 - The bundled vendor files (`wavesurfer.min.js`, `pitchfinder.min.js`) are excluded from checking via `tsconfig.json`.
 
@@ -164,7 +165,7 @@ automatically.
 **All tests and type checking must pass before every commit, push, or task sign-off.**
 The Claude Stop hook runs type checking and both test suites automatically:
 
-    npx tsc --noEmit && bun test && bun x playwright test
+    bun x tsc --noEmit && bun test && bun x playwright test
 
 Claude cannot finish a response if any command exits non-zero.
 

@@ -1,3 +1,4 @@
+/** @import { DictEntry } from './types.js' */
 // Musical Dictionary — sourced from Wikipedia Glossary of Music Terminology
 // Each entry: { term, lang, def }
 // lang codes: IT = Italian, DE = German, FR = French, EN = English, LA = Latin, ES = Spanish

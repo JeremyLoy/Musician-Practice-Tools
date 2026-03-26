@@ -1,4 +1,5 @@
 // @ts-check
+/** @import { DroneState, DroneRatio, ActiveOsc, SavedPrefs, MetronomePrefs, MetronomeAPI, TunerAPI } from './types.js' */
 import { initDict } from './dict.js';
 import { initTuner } from './tuner.js';
 import { initRecorder } from './recorder.js';
@@ -80,8 +81,8 @@ const getCtx = () => {
 // Tells the OS this page does simultaneous playback + recording.
 // Improves iOS audio routing when drone/metronome play alongside
 // the tuner or recorder mic. No-op on browsers without the API.
-if (navigator.audioSession) {
-    navigator.audioSession.type = 'play-and-record';
+if (/** @type {any} */ (navigator).audioSession) {
+    /** @type {any} */ (navigator).audioSession.type = 'play-and-record';
 }
 
 // ─── SHARED MIC STREAM ──────────────────────────────────────

@@ -18,6 +18,6 @@
     "noUnusedParameters": false,
     "noUnusedLocals": false
   },
-  "include": ["docs/**/*.js", "docs/**/*.d.ts"],
+  "include": ["docs/**/*.js"],
   "exclude": ["docs/wavesurfer.min.js", "docs/pitchfinder.min.js"]
 }

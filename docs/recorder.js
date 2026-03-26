@@ -1,4 +1,5 @@
 // @ts-check
+/** @import { Memo, RecorderInitOptions } from './types.js' */
 // ─── AUDIO RECORDER ──────────────────────────────────────────────────────────
 
 // ─── Pure exports (testable in isolation) ────────────────────────────────────
@@ -117,7 +118,7 @@ export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, rele
 
                 // Use MediaElement backend: lets the browser's native <audio> handle decoding,
                 // which is the only reliable approach on iOS Safari for blob URLs.
-                const ws = window.WaveSurfer.create({
+                const ws = /** @type {any} */ (window).WaveSurfer.create({
                     container: `#w-${m.id}`,
                     waveColor: '#475569',
                     progressColor: '#22c55e',
@@ -199,7 +200,7 @@ export function initRecorder({ db, getCtx, onRecordingChange, getMicStream, rele
         onRecordingChange(true);
     };
 
-    window.deleteMemo = id => {         // must stay on window for inline onclick
+    /** @type {any} */ (window).deleteMemo = id => {         // must stay on window for inline onclick
         if (!confirm('Delete this memo?')) return;
         const tx = db.transaction('memos', 'readwrite');
         tx.objectStore('memos').delete(id);
