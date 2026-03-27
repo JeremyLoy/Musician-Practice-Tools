@@ -3,14 +3,16 @@
  * Run: bun x playwright test e2e/capture-pr-media.js --reporter=line
  *
  * Output: .github/
- *   layout-mobile.png         — 390×844 single-column
- *   layout-desktop.png        — 1280×900 two-column
- *   layout-full-width.png     — card expanded to full-width
- *   layout-3-columns.png      — three-column layout
- *   demo-layout.mp4 (or .webm) — interaction video
+ *   layout-mobile.png              — 390×844 single-column
+ *   layout-desktop.png             — 1280×900 two-column
+ *   layout-full-width.png          — card expanded to full-width (2-col)
+ *   layout-full-width-2col.png     — drone card spanning both columns (2-col layout)
+ *   layout-full-width-3col.png     — drone card spanning all three columns (3-col layout)
+ *   layout-3-columns.png           — three-column layout
+ *   demo-layout.mp4 (or .webm)    — interaction video
  */
 
-import { test } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
 
@@ -67,6 +69,47 @@ test('capture full-width card screenshot', async ({ page }) => {
     await page.waitForTimeout(200);
 
     await page.screenshot({ path: path.join(OUT, 'layout-full-width.png'), fullPage: false });
+});
+
+test('capture full-width card in 2-column layout', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(BASE);
+    await page.waitForSelector('body[data-ready]');
+    await clearLayout(page);
+
+    // Expand metro-card to full-width — it sits in col2 so the contrast is clear
+    const grip = page.locator('#metro-card .card-resize-handle');
+    const box = await grip.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 100, box.y + box.height / 2, { steps: 15 });
+    await page.mouse.up();
+    await page.waitForTimeout(200);
+
+    await page.screenshot({ path: path.join(OUT, 'layout-full-width-2col.png'), fullPage: false });
+});
+
+test('capture full-width card in 3-column layout', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.goto(BASE);
+    await page.waitForSelector('body[data-ready]');
+    await clearLayout(page);
+
+    // Switch to 3 columns first
+    await page.locator('#colCountPlus').click();
+    await page.waitForTimeout(200);
+    await expect(page.locator('#colCountVal')).toHaveText('3');
+
+    // Expand drone-card to full-width across all 3 columns
+    const grip = page.locator('#drone-card .card-resize-handle');
+    const box = await grip.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 100, box.y + box.height / 2, { steps: 15 });
+    await page.mouse.up();
+    await page.waitForTimeout(200);
+
+    await page.screenshot({ path: path.join(OUT, 'layout-full-width-3col.png'), fullPage: false });
 });
 
 test('capture 3-column screenshot', async ({ page }) => {
