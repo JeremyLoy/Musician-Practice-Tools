@@ -1,41 +1,15 @@
 // @ts-check
 /** @import { MetronomePrefs, MetronomeAPI, Meter } from './metronome.js' */
 /** @import { TunerAPI } from './tuner.js' */
+/** @import { DroneAPI, DronePrefs } from './drone.js' */
 import { initDict } from './dict.js';
 import { initTuner } from './tuner.js';
 import { initRecorder } from './recorder.js';
 import { initMetronome } from './metronome.js';
 import { initSpectrum } from './spectrum.js';
+import { initDrone } from './drone.js';
 
 // ─── Type Definitions ────────────────────────────────────────────────────────
-
-/**
- * Drone machine state.
- * @typedef {object} DroneState
- * @property {number} root - Root note as semitone index (0=C, 9=A, 11=B).
- * @property {Set<number>} intervals - Active interval semitone offsets.
- * @property {'just' | 'equal'} tuning - Tuning system.
- * @property {OscillatorType} color - Oscillator waveform type (named "color" for historical reasons).
- * @property {boolean} running - Whether the drone is currently playing.
- * @property {number} octave - Octave (1–6).
- * @property {number} volume - Volume (0–1).
- */
-
-/**
- * Drone interval ratio entry.
- * @typedef {object} DroneRatio
- * @property {string} n - Short interval name (e.g. "P5", "m3").
- * @property {number} s - Semitone offset from root.
- * @property {number} r - Just intonation frequency ratio.
- * @property {string} f - Ratio as fraction string (e.g. "3/2").
- */
-
-/**
- * An active drone oscillator with its gain node.
- * @typedef {object} ActiveOsc
- * @property {OscillatorNode} osc
- * @property {GainNode} g
- */
 
 /**
  * Per-column card layout configuration.
@@ -70,7 +44,7 @@ import { initSpectrum } from './spectrum.js';
 // ─── VERSION ─────────────────────────────────────────────────
 // Keep in sync with CACHE_VERSION in sw.js. Format: YYYYMMDD-HHMM (24h UTC).
 /** @type {string} */
-const APP_VERSION = 'toolkit-20260327-1200';
+const APP_VERSION = 'toolkit-20260327-1430';
 
 // 1. Inline the base64 string directly (No import needed!)
 const silenceDataURI = "data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAADAAAGhgBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVWqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqr///////////////////////////////////////////8AAAA5TEFNRTMuOThyAc0AAAAAAAAAABSAJAiqQgAAgAAABobxtI73AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQxAACFEII9ACZ/sJZwWEoEb8w/////N//////JcxjHjf+7/v/H2PzCCFAiDtGeyBCIx7bJJ1mmEEMy6g8mm2c8nrGABB4h2Mkmn//4z/73u773R5qHHu/j/w7Kxkzh5lWRWdsifCkNAnY9Zc1HvDAhjhSHdFkHFzLmabt/AQxSg2wwzLhHIJOBnAWwVY4zrhIYhhc2kvhYDfQ4hDi2Gmh5KyFn8EcGIrHAngNgIwVIEMf5bzbAiTRoAD///8z/KVhkkWEle6IX+d/z4fvH3BShK1e5kmjkCMoxVmXhd4ROlTKo3iipasvTilY21q19ta30/v/0/idPX1v8PNxJL6ramnOVsdvMv2akO0iSYIzdJFirtzWXCZicS9vHqvSKyqm5XJBdqBwPxyfJdykhWTZ0G0ZyTZGpLKxsNwwoRhsx3tZfhwmeOBVISm3impAC/IT/8hP/EKEM1KMdVdVKM2rHV4x7HVXZvbVVKN/qq8CiV9VL9jjH/6l6qf7MBCjZmOqsAibjcP+qqqv0oxqpa/NVW286hPo1nz2L/h8+jXt//uSxCmDU2IK/ECN98KKtE5IYzNoCfbw+u9i5r8PoadUMFPKqWL4LK3T/LCraMSHGkW4bpLXR/E6LlHOVQxmslKVJ8IULktMN06N0FKCpHCoYsjC4F+Z0NVqdNFoGSTjSiyjzLdnZ2fNqTi2eHKONONKLMPMKLONKLMPQRJGlFxZRoKcJFAYEeIFiRQkUWUeYfef//Ko04soswso40UJAgMw8wosososy0EalnZyjQUGBRQGIFggOWUacWUeYmuadrZziQKKEgQsQLAhQkUJAgMQDghltLO1onp0cpkNInSFMqlYeSEJ5AHsqFdOwy1DA2sRmRJKxdKRfLhfLw5BzUxBTUUzLjk4LjJVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjk4LjJVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7ksRRA8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=";
@@ -116,7 +90,7 @@ let wakeLock = null;
 
 /** Acquires or releases the screen wake lock based on whether any audio feature is active. */
 async function updateWakeLock() {
-    const audioActive = droneState?.running || metroRunning || recorderRunning || tunerRunning || spectrumRunning;
+    const audioActive = drone?.isRunning() || metroRunning || recorderRunning || tunerRunning || spectrumRunning;
     if (audioActive && !wakeLock && 'wakeLock' in navigator) {
         try { wakeLock = await navigator.wakeLock.request('screen'); }
         catch(e) { /* permission denied or not supported — silently ignore */ }
@@ -185,16 +159,8 @@ document.addEventListener('visibilitychange', () => {
     if (!audioCtx) return;
 
     audioCtx.resume().then(() => {
-        // Null out cached master gain nodes so they are recreated fresh and
-        // properly reconnected to the destination after the context resumes.
-        droneMaster = null;
-
-        // Drone: oscillators are killed by the browser when the context is suspended on iOS.
-        // Restart them if the drone was running.
-        if (droneState.running) {
-            stopDrone();
-            startDrone();
-        }
+        // Drone: oscillators are killed by iOS when the context is suspended.
+        drone?.handleVisibilityResume();
 
         // Metronome: handled by metronome module's handleVisibilityResume()
         metronome?.handleVisibilityResume();
@@ -354,13 +320,7 @@ function savePrefs() {
     try {
         localStorage.setItem(PREFS_KEY, JSON.stringify({
             ...currentMetroPrefs,
-            droneRoot: droneState.root,
-            droneIntervals: [...droneState.intervals],
-            droneTuning: droneState.tuning,
-            droneColor: droneState.color,
-            droneOctave: droneState.octave,
-            droneVolume: droneState.volume,
-            refA,
+            ...currentDronePrefs,
             cardLayout: { numColumns: cardLayout.numColumns, cols: cardLayout.cols.map(c => [...c]), fullWidth: [...cardLayout.fullWidth] },
             collapsedCards: [...document.querySelectorAll('.card.collapsed')].map(c => c.id),
         }));
@@ -377,20 +337,6 @@ const initDB = () => new Promise(res => {
     req.onupgradeneeded = e => /** @type {IDBOpenDBRequest} */ (e.target).result.createObjectStore('memos', { keyPath: 'id' });
     req.onsuccess = e => { db = /** @type {IDBOpenDBRequest} */ (e.target).result; res(undefined); };
 });
-
-// ─── DRONE DATA ───────────────────────────────────────────────
-/** @type {readonly string[]} */
-const noteNames = ["C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"];
-/** @type {DroneRatio[]} */
-const droneRatios = [
-    {n:"Uni",s:0, r:1,      f:"1/1"},   {n:"m2", s:1,  r:16/15, f:"16/15"},
-    {n:"M2", s:2, r:9/8,    f:"9/8"},   {n:"m3", s:3,  r:6/5,   f:"6/5"},
-    {n:"M3", s:4, r:5/4,    f:"5/4"},   {n:"P4", s:5,  r:4/3,   f:"4/3"},
-    {n:"TT", s:6, r:7/5,    f:"7/5"},   {n:"P5", s:7,  r:3/2,   f:"3/2"},
-    {n:"m6", s:8, r:8/5,    f:"8/5"},   {n:"M6", s:9,  r:5/3,   f:"5/3"},
-    {n:"m7", s:10,r:16/9,   f:"16/9"},  {n:"M7", s:11, r:15/8,  f:"15/8"},
-    {n:"Oct",s:12,r:2,      f:"2/1"}
-];
 
 // ─── CARD LAYOUT RESTORE ─────────────────────────────────────
 {
@@ -414,190 +360,23 @@ const droneRatios = [
     // else: cardLayout stays as defaultLayout(2) from initialization above
 }
 
-// ─── DRONE STATE ──────────────────────────────────────────────
+// ─── DRONE ────────────────────────────────────────────────────
 /** @type {SavedPrefs} */
 const prefs = loadPrefs();
-/** @type {DroneState} */
-let droneState = {
-    root:     prefs.droneRoot     ?? 9,
-    intervals:new Set(prefs.droneIntervals ?? [0]),
-    tuning:   /** @type {'just' | 'equal'} */ (prefs.droneTuning   ?? 'just'),
-    color:    /** @type {OscillatorType} */ (prefs.droneColor    ?? 'sine'),
-    running:  false,
-    octave:   prefs.droneOctave   ?? 4,
-    volume:   prefs.droneVolume   ?? 0.7
-};
-/** @type {ActiveOsc[]} */
-let activeOscs = [];
-/** @type {GainNode | null} */
-let droneMaster = null;
-/** @type {number} */
-let refA = prefs.refA ?? prefs.droneRef ?? 440;
 
-/**
- * Returns the drone master gain node, creating it lazily.
- * @returns {GainNode}
- */
-function getDroneMaster() {
-    const ctx = getCtx();
-    if (!droneMaster || droneMaster.context !== ctx) {
-        droneMaster = ctx.createGain();
-        droneMaster.gain.value = droneState.volume;
-        droneMaster.connect(ctx.destination);
-    }
-    return droneMaster;
-}
-
-/** Updates the debug console with current drone frequencies and ratios. */
-function updateDroneDebug() {
-    const rootFreq = (refA * Math.pow(2,(droneState.root-9)/12)) * Math.pow(2,droneState.octave-4);
-    let txt = `ROOT: ${noteNames[droneState.root]} @ ${rootFreq.toFixed(2)}Hz\nMODE: ${droneState.tuning.toUpperCase()}\n\n`;
-    [...droneState.intervals].sort((a,b)=>a-b).forEach(s => {
-        const iv = /** @type {DroneRatio} */ (droneRatios.find(r=>r.s===s));
-        const freq = droneState.tuning==='equal' ? rootFreq*Math.pow(2,s/12) : rootFreq*iv.r;
-        const ratio = droneState.tuning==='equal' ? `2^(${s}/12)` : `${iv.f} (${iv.r.toFixed(3)})`;
-        txt += `${iv.n.padEnd(4)}: ${freq.toFixed(2)}Hz | ${ratio}\n`;
-    });
-    /** @type {HTMLElement} */ (document.getElementById('debug-console')).innerText = txt;
-    savePrefs();
-}
-
-/** Creates and starts oscillators for all active drone intervals. */
-function startDrone() {
-    updateWakeLock();
-    const ctx = getCtx();
-    const rootFreq = (refA * Math.pow(2,(droneState.root-9)/12)) * Math.pow(2,droneState.octave-4);
-    const master = getDroneMaster();
-    droneState.intervals.forEach(s => {
-        const iv = /** @type {DroneRatio} */ (droneRatios.find(r=>r.s===s));
-        const f = droneState.tuning==='equal' ? rootFreq*Math.pow(2,s/12) : rootFreq*iv.r;
-        const osc = ctx.createOscillator(), g = ctx.createGain();
-        osc.type = droneState.color;
-        osc.frequency.setValueAtTime(f, ctx.currentTime);
-        g.gain.setValueAtTime(0, ctx.currentTime);
-        g.gain.linearRampToValueAtTime(0.15, ctx.currentTime+0.12);
-        osc.connect(g).connect(master);
-        osc.start();
-        activeOscs.push({osc, g});
-    });
-}
-
-/** Fades out and stops all active drone oscillators. */
-const stopDrone = () => {
-    const ctx = getCtx();
-    activeOscs.forEach(n => {
-        try { n.g.gain.linearRampToValueAtTime(0, ctx.currentTime+0.1); } catch(e){}
-        setTimeout(() => { try { n.osc.stop(); } catch(e){} }, 150);
-    });
-    activeOscs = [];
-    updateWakeLock();
+/** @type {DronePrefs} */
+let currentDronePrefs = {
+    droneRoot:      prefs.droneRoot      ?? 9,
+    droneIntervals: prefs.droneIntervals ?? [0],
+    droneTuning:    prefs.droneTuning    ?? 'just',
+    droneColor:     prefs.droneColor     ?? 'sine',
+    droneOctave:    prefs.droneOctave    ?? 4,
+    droneVolume:    prefs.droneVolume    ?? 0.7,
+    refA:           prefs.refA ?? prefs.droneRef ?? 440,
 };
 
-/** Reconciles drone state: updates debug display and restarts oscillators if running. */
-const droneSync = () => { updateDroneDebug(); if(droneState.running){ stopDrone(); startDrone(); } };
-
-// Build root grid
-noteNames.forEach((n,i) => {
-    const b = document.createElement('button');
-    b.className='btn-toggle'; b.textContent=n;
-    if(i===droneState.root) b.classList.add('active');
-    b.onclick = () => {
-        document.querySelectorAll('#rootGrid .btn-toggle').forEach(x=>x.classList.remove('active'));
-        b.classList.add('active'); droneState.root=i; droneSync();
-    };
-    /** @type {HTMLElement} */ (document.getElementById('rootGrid')).appendChild(b);
-});
-
-// Build interval grid
-droneRatios.forEach(rt => {
-    const b = document.createElement('button');
-    b.className='btn-toggle'; b.textContent=rt.n;
-    if(droneState.intervals.has(rt.s)) b.classList.add('active');
-    b.onclick = () => {
-        if(droneState.intervals.has(rt.s) && droneState.intervals.size>1) {
-            droneState.intervals.delete(rt.s); b.classList.remove('active');
-        } else {
-            droneState.intervals.add(rt.s); b.classList.add('active');
-        }
-        droneSync();
-    };
-    /** @type {HTMLElement} */ (document.getElementById('intervalGrid')).appendChild(b);
-});
-
-const droneToggleBtn = /** @type {HTMLButtonElement} */ (document.getElementById('droneToggle'));
-droneToggleBtn.onclick = () => {
-    droneState.running = !droneState.running;
-    if(droneState.running){ startDrone(); droneToggleBtn.textContent='🎵 Stop Drone'; droneToggleBtn.classList.add('is-active'); }
-    else { stopDrone(); droneToggleBtn.textContent='🎵 Start Drone'; droneToggleBtn.classList.remove('is-active'); }
-};
-
-/** @type {HTMLElement} */ (document.getElementById('droneClear')).onclick = () => {
-    droneState.intervals = new Set([0]);
-    document.querySelectorAll('#intervalGrid .btn-toggle').forEach((b,i)=>b.classList.toggle('active',i===0));
-    droneSync();
-};
-
-// Restore saved values
-const droneRefVal      = /** @type {HTMLElement} */ (document.getElementById('droneRefVal'));
-const droneOctaveInput = /** @type {HTMLInputElement} */ (document.getElementById('droneOctave'));
-const droneOctaveVal   = /** @type {HTMLElement} */ (document.getElementById('droneOctaveVal'));
-
-droneRefVal.textContent = String(refA);
-droneOctaveInput.value = String(droneState.octave);
-droneOctaveVal.textContent = String(droneState.octave);
-
-/** @type {HTMLElement} */ (document.getElementById('droneRefMinus')).onclick = () => {
-    refA = Math.max(400, refA - 1);
-    droneRefVal.textContent = String(refA);
-    /** @type {HTMLElement} */ (document.getElementById('tunerRefVal')).textContent = String(refA);
-    droneSync(); savePrefs();
-};
-/** @type {HTMLElement} */ (document.getElementById('droneRefPlus')).onclick = () => {
-    refA = Math.min(480, refA + 1);
-    droneRefVal.textContent = String(refA);
-    /** @type {HTMLElement} */ (document.getElementById('tunerRefVal')).textContent = String(refA);
-    droneSync(); savePrefs();
-};
-/** @type {HTMLElement} */ (document.getElementById('droneOctaveMinus')).onclick = () => {
-    const v = Math.max(1, (parseInt(droneOctaveInput.value)||4) - 1);
-    droneOctaveInput.value = String(v); droneOctaveVal.textContent = String(v); droneState.octave=v; droneSync();
-};
-/** @type {HTMLElement} */ (document.getElementById('droneOctavePlus')).onclick = () => {
-    const v = Math.min(6, (parseInt(droneOctaveInput.value)||4) + 1);
-    droneOctaveInput.value = String(v); droneOctaveVal.textContent = String(v); droneState.octave=v; droneSync();
-};
-
-// Volume slider
-const droneVolumeEl = /** @type {HTMLInputElement} */ (document.getElementById('droneVolume'));
-droneVolumeEl.value = String(droneState.volume);
-droneVolumeEl.oninput = (/** @type {Event} */ e) => {
-    droneState.volume = parseFloat(/** @type {HTMLInputElement} */ (e.target).value);
-    if(droneMaster) droneMaster.gain.value = droneState.volume;
-    savePrefs();
-};
-
-// Tuning + wave switches — restore saved state
-/** @type {[string, string][]} */ ([['tuningSwitch', 'tuning'], ['colorSwitch', 'color']]).forEach(([id, key]) => {
-    /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll(`#${id} button`)).forEach(
-        b => b.classList.toggle('active', b.dataset.val === /** @type {any} */ (droneState)[key]));
-    /** @type {HTMLElement} */ (document.getElementById(id)).onclick = (/** @type {Event} */ e) => {
-        const btn = /** @type {HTMLButtonElement} */ (e.target);
-        if(btn.tagName!=='BUTTON') return;
-        /** @type {NodeListOf<HTMLButtonElement>} */ (document.querySelectorAll(`#${id} button`)).forEach(
-            b=>b.classList.remove('active'));
-        btn.classList.add('active');
-        /** @type {any} */ (droneState)[key] = btn.dataset.val; droneSync();
-    };
-});
-
-// Details toggle
-const detailsBtn = /** @type {HTMLElement} */ (document.getElementById('detailsToggle'));
-const debugEl    = /** @type {HTMLElement} */ (document.getElementById('debug-console'));
-detailsBtn.onclick = () => {
-    const open = debugEl.style.display !== 'none';
-    debugEl.style.display = open ? 'none' : 'block';
-    detailsBtn.textContent = open ? '🔬 Show Details' : '🔬 Hide Details';
-};
+/** @type {DroneAPI | null} */
+let drone = null;
 
 let metroRunning = false;
 /** @type {MetronomePrefs | {}} */
@@ -632,7 +411,16 @@ initDB().then(()=>{
         onRunningChange: (v) => { metroRunning = v; updateWakeLock(); },
         onPrefsChange: (mp) => { currentMetroPrefs = mp; savePrefs(); },
     });
-    droneSync();
+    drone = initDrone({
+        getCtx,
+        onRefAChange: (newVal) => {
+            /** @type {HTMLElement} */ (document.getElementById('tunerRefVal')).textContent = String(newVal);
+        },
+        onRunningChange: (_v) => { updateWakeLock(); },
+        onPrefsChange: (dp) => { currentDronePrefs = dp; savePrefs(); },
+        initialPrefs: currentDronePrefs,
+    });
+    drone.sync();
     initRecorder({
         db: /** @type {IDBDatabase} */ (db),
         getCtx,
@@ -643,12 +431,8 @@ initDB().then(()=>{
     initDict();
     tuner = initTuner({
         getCtx,
-        getRefA: () => refA,
-        onRefAChange: (newVal) => {
-            refA = newVal;
-            /** @type {HTMLElement} */ (document.getElementById('droneRefVal')).textContent = String(newVal);
-            droneSync(); savePrefs();
-        },
+        getRefA: () => drone?.getRefA() ?? 440,
+        onRefAChange: (newVal) => { drone?.setRefA(newVal); },
         onRunningChange: (isRunning) => { tunerRunning = isRunning; updateWakeLock(); },
         getMicStream,
         releaseMicStream
