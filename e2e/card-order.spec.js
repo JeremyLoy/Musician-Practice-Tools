@@ -16,6 +16,7 @@ test.describe('Card drag-to-reorder', () => {
                 const key = 'toolkit_prefs_v2';
                 const prefs = JSON.parse(localStorage.getItem(key) || '{}');
                 delete prefs.cardOrder;
+                delete prefs.cardLayout;
                 localStorage.setItem(key, JSON.stringify(prefs));
             } catch {}
         });

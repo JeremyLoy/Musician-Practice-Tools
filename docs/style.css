@@ -216,6 +216,32 @@
             .drone-row { gap: 8px; }
         }
 
+        /* FULL-WIDTH CARD CONTAINER */
+        .card-full-width { display: flex; flex-direction: column; gap: 1.5rem; }
+        .card-full-width:not(:empty) { margin-top: 1.5rem; }
+
+        /* CARD RESIZE HANDLE — bottom-right corner drag grip */
+        .card { position: relative; }
+        .card-resize-handle {
+            position: absolute; bottom: 0; right: 0;
+            width: 44px; height: 44px;
+            cursor: ew-resize;
+            display: flex; align-items: flex-end; justify-content: flex-end;
+            padding: 6px;
+            color: var(--text-muted);
+            opacity: 0.4;
+            touch-action: none;
+            user-select: none;
+            transition: opacity 0.15s, color 0.15s;
+            font-size: 1.1rem;
+        }
+        .card-resize-handle:hover, .card-resize-handle:active { opacity: 1; color: var(--primary); }
+        .card.card-is-full-width .card-resize-handle { color: var(--primary); opacity: 0.6; }
+
+        /* COLUMN COUNT STEPPER — hidden on mobile (single column forced below 700px) */
+        .col-count-ctrl { display: none; align-items: center; gap: 0.5rem; justify-content: center; margin-bottom: 1rem; }
+        @media (min-width: 700px) { .col-count-ctrl { display: flex; } }
+
         #app-version-footer {
             text-align: center;
             font-size: 0.65rem;
