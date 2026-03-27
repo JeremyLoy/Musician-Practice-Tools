@@ -275,7 +275,11 @@ function distributeCards() {
     if (isWide) {
         // Build/rebuild cardGrid if absent or column count changed
         if (!cardGrid || cardGrid.children.length !== cardLayout.numColumns) {
-            if (cardGrid) cardGrid.remove();
+            if (cardGrid) {
+                // Rescue card elements before removing the grid so getElementById still finds them
+                [...cardGrid.querySelectorAll('.card')].forEach(card => document.body.insertBefore(card, footer));
+                cardGrid.remove();
+            }
             cardGrid = document.createElement('div');
             cardGrid.className = 'card-grid';
             for (let i = 0; i < cardLayout.numColumns; i++) {
@@ -341,7 +345,6 @@ function setNumColumns(n) {
     const newCols = Array.from({ length: n }, () => /** @type {string[]} */ ([]));
     flat.forEach((id, i) => newCols[i % n]?.push(id));
     cardLayout = { numColumns: n, cols: newCols, fullWidth: cardLayout.fullWidth };
-    if (cardGrid) { cardGrid.remove(); cardGrid = null; }
     distributeCards();
     savePrefs();
 }

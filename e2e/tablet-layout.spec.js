@@ -280,6 +280,49 @@ test.describe('Column count stepper', () => {
         await page.waitForSelector('body[data-ready]');
         await expect(page.locator('#colCountVal')).toHaveText('3');
     });
+
+    test('all 6 cards are present in the DOM after switching to 3 columns', async ({ page }) => {
+        await page.setViewportSize({ width: 768, height: 2200 });
+        await page.locator('#colCountPlus').click();
+        await expect(page.locator('#colCountVal')).toHaveText('3');
+        const cardIds = await page.locator('.card').evaluateAll(cards => cards.map(c => c.id));
+        expect(cardIds).toHaveLength(6);
+        expect(cardIds).toContain('drone-card');
+        expect(cardIds).toContain('metro-card');
+        expect(cardIds).toContain('memos-card');
+        expect(cardIds).toContain('tuner-card');
+        expect(cardIds).toContain('spectrum-card');
+        expect(cardIds).toContain('dict-card');
+    });
+
+    test('all 6 cards are visible in 3-column layout', async ({ page }) => {
+        await page.setViewportSize({ width: 768, height: 2200 });
+        await page.locator('#colCountPlus').click();
+        await expect(page.locator('#colCountVal')).toHaveText('3');
+        const cards = page.locator('.card');
+        await expect(cards).toHaveCount(6);
+        for (let i = 0; i < 6; i++) {
+            await expect(cards.nth(i)).toBeVisible();
+        }
+    });
+
+    test('switching from 3 columns back to 2 keeps all 6 cards', async ({ page }) => {
+        await page.setViewportSize({ width: 768, height: 2200 });
+        await page.locator('#colCountPlus').click();
+        await page.locator('#colCountMinus').click();
+        await expect(page.locator('#colCountVal')).toHaveText('2');
+        await expect(page.locator('.card')).toHaveCount(6);
+    });
+
+    test('3-column layout renders cards in exactly 3 columns', async ({ page }) => {
+        await page.setViewportSize({ width: 1280, height: 2200 });
+        await page.locator('#colCountPlus').click();
+        await expect(page.locator('#colCountVal')).toHaveText('3');
+        const xPositions = await page.locator('.card').evaluateAll(cards =>
+            [...new Set(cards.map(c => Math.round(c.getBoundingClientRect().left)))]
+        );
+        expect(xPositions.length).toBe(3);
+    });
 });
 
 test.describe('Card collapse', () => {
