@@ -22,7 +22,7 @@ import { initDrone } from './drone.js';
 /**
  * Per-column card layout configuration.
  * @typedef {object} CardLayoutPrefs
- * @property {number} numColumns - Number of columns (default 2, range 1–4).
+ * @property {number} numColumns - Number of columns (default 2, range 1–3).
  * @property {CardPlacement[]} placements - Ordered card placements.
  */
 
@@ -343,10 +343,10 @@ function toggleCardFullWidth(cardId) {
 
 /**
  * Changes the number of columns, redistributing column cards via round-robin.
- * @param {number} n - New column count (clamped to 1–4).
+ * @param {number} n - New column count (clamped to 1–3).
  */
 function setNumColumns(n) {
-    if (n < 1 || n > 4) return;
+    if (n < 1 || n > 3) return;
     let colIdx = 0;
     cardLayout.placements.forEach(p => {
         if (p.col !== 'full') {

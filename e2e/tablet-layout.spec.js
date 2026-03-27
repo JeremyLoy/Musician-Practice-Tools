@@ -266,10 +266,10 @@ test.describe('Column count stepper', () => {
         await expect(page.locator('#colCountVal')).toHaveText('1');
     });
 
-    test('clicking plus above 4 has no effect', async ({ page }) => {
+    test('clicking plus above 3 has no effect', async ({ page }) => {
         await page.setViewportSize({ width: 768, height: 1024 });
         for (let i = 0; i < 5; i++) await page.locator('#colCountPlus').click();
-        await expect(page.locator('#colCountVal')).toHaveText('4');
+        await expect(page.locator('#colCountVal')).toHaveText('3');
     });
 
     test('column count persists across reload', async ({ page }) => {

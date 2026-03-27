@@ -168,9 +168,8 @@
 
         /* RESPONSIVE — tablet: 2-column layout (JS distributes cards into flex columns) */
         @media (min-width: 700px) {
-            body { max-width: 1100px; }
-            body[data-num-cols="3"] { max-width: 1500px; }
-            body[data-num-cols="4"] { max-width: 1900px; }
+            body { max-width: min(90vw, 1200px); }
+            body[data-num-cols="3"] { max-width: min(90vw, 1600px); }
             .card-grid {
                 display: flex;
                 gap: 1.5rem;
