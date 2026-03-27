@@ -38,6 +38,14 @@ import { initSpectrum } from './spectrum.js';
  */
 
 /**
+ * Per-column card layout configuration.
+ * @typedef {object} CardLayoutPrefs
+ * @property {number} numColumns - Number of columns (default 2, range 1–4).
+ * @property {string[][]} cols - Ordered card IDs per column. cols[0] = leftmost.
+ * @property {string[]} fullWidth - Card IDs shown full-width below the column grid.
+ */
+
+/**
  * Persisted user preferences (stored in localStorage).
  * @typedef {object} SavedPrefs
  * @property {number} [bpm]
@@ -54,14 +62,15 @@ import { initSpectrum } from './spectrum.js';
  * @property {number} [droneVolume]
  * @property {number} [refA]
  * @property {number} [droneRef] - Deprecated. Use refA instead.
- * @property {string[]} [cardOrder]
+ * @property {string[]} [cardOrder] - Deprecated. Use cardLayout instead.
  * @property {string[]} [collapsedCards]
+ * @property {CardLayoutPrefs} [cardLayout]
  */
 
 // ─── VERSION ─────────────────────────────────────────────────
 // Keep in sync with CACHE_VERSION in sw.js. Format: YYYYMMDD-HHMM (24h UTC).
 /** @type {string} */
-const APP_VERSION = 'toolkit-20260326-1500';
+const APP_VERSION = 'toolkit-20260327-1200';
 
 // 1. Inline the base64 string directly (No import needed!)
 const silenceDataURI = "data:audio/mpeg;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAASW5mbwAAAA8AAAADAAAGhgBVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVWqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqr///////////////////////////////////////////8AAAA5TEFNRTMuOThyAc0AAAAAAAAAABSAJAiqQgAAgAAABobxtI73AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//uQxAACFEII9ACZ/sJZwWEoEb8w/////N//////JcxjHjf+7/v/H2PzCCFAiDtGeyBCIx7bJJ1mmEEMy6g8mm2c8nrGABB4h2Mkmn//4z/73u773R5qHHu/j/w7Kxkzh5lWRWdsifCkNAnY9Zc1HvDAhjhSHdFkHFzLmabt/AQxSg2wwzLhHIJOBnAWwVY4zrhIYhhc2kvhYDfQ4hDi2Gmh5KyFn8EcGIrHAngNgIwVIEMf5bzbAiTRoAD///8z/KVhkkWEle6IX+d/z4fvH3BShK1e5kmjkCMoxVmXhd4ROlTKo3iipasvTilY21q19ta30/v/0/idPX1v8PNxJL6ramnOVsdvMv2akO0iSYIzdJFirtzWXCZicS9vHqvSKyqm5XJBdqBwPxyfJdykhWTZ0G0ZyTZGpLKxsNwwoRhsx3tZfhwmeOBVISm3impAC/IT/8hP/EKEM1KMdVdVKM2rHV4x7HVXZvbVVKN/qq8CiV9VL9jjH/6l6qf7MBCjZmOqsAibjcP+qqqv0oxqpa/NVW286hPo1nz2L/h8+jXt//uSxCmDU2IK/ECN98KKtE5IYzNoCfbw+u9i5r8PoadUMFPKqWL4LK3T/LCraMSHGkW4bpLXR/E6LlHOVQxmslKVJ8IULktMN06N0FKCpHCoYsjC4F+Z0NVqdNFoGSTjSiyjzLdnZ2fNqTi2eHKONONKLMPMKLONKLMPQRJGlFxZRoKcJFAYEeIFiRQkUWUeYfef//Ko04soswso40UJAgMw8wosososy0EalnZyjQUGBRQGIFggOWUacWUeYmuadrZziQKKEgQsQLAhQkUJAgMQDghltLO1onp0cpkNInSFMqlYeSEJ5AHsqFdOwy1DA2sRmRJKxdKRfLhfLw5BzUxBTUUzLjk4LjJVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVUxBTUUzLjk4LjJVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/7ksRRA8AAAaQAAAAgAAA0gAAABFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVU=";
@@ -204,56 +213,137 @@ const PREFS_KEY = 'toolkit_prefs_v2';
  */
 function loadPrefs() { try { return JSON.parse(localStorage.getItem(PREFS_KEY) || '{}') || {}; } catch { return {}; } }
 
-// ─── TWO-COLUMN LAYOUT ──────────────────────────────────────
-// At ≥700px, cards are distributed into two flex columns in reading order
-// (left→right per row). Each column compresses independently on collapse.
-/** @type {HTMLDivElement | null} */
-let cardGrid = null;
+// ─── MULTI-COLUMN LAYOUT ─────────────────────────────────────
+// At ≥700px, cards are placed into explicit per-column lists. Moving a card
+// within a column only affects that column; cross-column moves do not shift
+// other cards. Full-width cards span all columns and appear below the grid.
+
+/** Canonical list of all card element IDs in their default visual order. */
+const ALL_CARD_IDS = ['drone-card', 'metro-card', 'memos-card', 'tuner-card', 'spectrum-card', 'dict-card'];
 
 /**
- * Returns cards in logical reading order (left→right, top→bottom).
- * @returns {Element[]}
+ * Returns a default CardLayoutPrefs distributing cards evenly across n columns.
+ * @param {number} n - Number of columns.
+ * @returns {CardLayoutPrefs}
  */
-function getLogicalCardOrder() {
-    if (cardGrid) {
-        const col1 = [.../** @type {Element} */ (cardGrid.children[0]).querySelectorAll('.card')];
-        const col2 = [.../** @type {Element} */ (cardGrid.children[1]).querySelectorAll('.card')];
-        /** @type {Element[]} */
-        const order = [];
-        const max = Math.max(col1.length, col2.length);
-        for (let i = 0; i < max; i++) {
-            if (col1[i]) order.push(/** @type {Element} */ (col1[i]));
-            if (col2[i]) order.push(/** @type {Element} */ (col2[i]));
-        }
-        return order;
-    }
-    return [...document.querySelectorAll('.card')];
+function defaultLayout(n) {
+    const cols = Array.from({ length: n }, () => /** @type {string[]} */ ([]));
+    ALL_CARD_IDS.forEach((id, i) => cols[i % n]?.push(id));
+    return { numColumns: n, cols, fullWidth: [] };
 }
 
-/** Moves cards into two flex columns (≥700px) or back to single-column body (<700px). */
+/** @type {CardLayoutPrefs} */
+let cardLayout = defaultLayout(2);
+/** @type {HTMLDivElement | null} */
+let cardGrid = null;
+/** @type {HTMLDivElement | null} */
+let fullWidthContainer = null;
+
+/**
+ * Returns card elements in reading order: interleaved left→right per row across
+ * columns, then full-width cards appended. Used for mobile single-column layout.
+ * @returns {Element[]}
+ */
+function getReadingOrder() {
+    const max = cardLayout.cols.reduce((m, c) => Math.max(m, c.length), 0);
+    /** @type {Element[]} */
+    const order = [];
+    for (let i = 0; i < max; i++) {
+        cardLayout.cols.forEach(col => {
+            const id = col[i];
+            if (id) { const el = document.getElementById(id); if (el) order.push(el); }
+        });
+    }
+    cardLayout.fullWidth.forEach(id => { const el = document.getElementById(id); if (el) order.push(el); });
+    return order;
+}
+
+/** Syncs the .card-is-full-width class on each card to match cardLayout.fullWidth. */
+function syncCardFullWidthClasses() {
+    document.querySelectorAll('.card').forEach(card => {
+        card.classList.toggle('card-is-full-width', cardLayout.fullWidth.includes(card.id));
+    });
+}
+
+/**
+ * Distributes cards into the multi-column grid (≥700px) or flat single-column
+ * order (<700px). Safe to call multiple times — always re-populates from cardLayout.
+ */
 function distributeCards() {
     const isWide = window.innerWidth >= 700;
+    const footer = document.getElementById('app-version-footer');
     if (isWide) {
-        const cards = cardGrid ? getLogicalCardOrder() : [...document.querySelectorAll('.card')];
-        if (!cardGrid) {
+        // Build/rebuild cardGrid if absent or column count changed
+        if (!cardGrid || cardGrid.children.length !== cardLayout.numColumns) {
+            if (cardGrid) cardGrid.remove();
             cardGrid = document.createElement('div');
             cardGrid.className = 'card-grid';
-            cardGrid.appendChild(document.createElement('div')).className = 'card-grid-col';
-            cardGrid.appendChild(document.createElement('div')).className = 'card-grid-col';
-            const footer = document.getElementById('app-version-footer');
-            document.body.insertBefore(cardGrid, footer);
+            for (let i = 0; i < cardLayout.numColumns; i++) {
+                const col = document.createElement('div');
+                col.className = 'card-grid-col';
+                cardGrid.appendChild(col);
+            }
+            const insertRef = (fullWidthContainer?.parentNode) ? fullWidthContainer : footer;
+            document.body.insertBefore(cardGrid, insertRef);
         }
-        const [col1, col2] = /** @type {HTMLCollectionOf<Element>} */ (cardGrid.children);
-        cards.forEach((card, i) => {
-            /** @type {Element} */ (i % 2 === 0 ? col1 : col2).appendChild(card);
+        // Place cards into their columns (appendChild moves them from any prior parent)
+        const grid = cardGrid;
+        cardLayout.cols.forEach((ids, colIdx) => {
+            const col = grid.children[colIdx];
+            if (!col) return;
+            ids.forEach(id => { const el = document.getElementById(id); if (el) col.appendChild(el); });
         });
-    } else if (cardGrid) {
-        const cards = getLogicalCardOrder();
-        const footer = document.getElementById('app-version-footer');
-        cards.forEach(card => document.body.insertBefore(card, footer));
-        cardGrid.remove();
-        cardGrid = null;
+        // Build fullWidthContainer if absent
+        if (!fullWidthContainer) {
+            fullWidthContainer = document.createElement('div');
+            fullWidthContainer.className = 'card-full-width';
+            document.body.insertBefore(fullWidthContainer, footer);
+        }
+        const fwc = fullWidthContainer;
+        cardLayout.fullWidth.forEach(id => { const el = document.getElementById(id); if (el) fwc.appendChild(el); });
+    } else {
+        // Single column: cards in reading order placed directly in body
+        getReadingOrder().forEach(card => document.body.insertBefore(card, footer));
+        if (cardGrid) { cardGrid.remove(); cardGrid = null; }
+        if (fullWidthContainer) { fullWidthContainer.remove(); fullWidthContainer = null; }
     }
+    syncCardFullWidthClasses();
+}
+
+/**
+ * Toggles a card between normal column placement and full-width below the grid.
+ * @param {string} cardId
+ */
+function toggleCardFullWidth(cardId) {
+    if (cardLayout.fullWidth.includes(cardId)) {
+        cardLayout.fullWidth = cardLayout.fullWidth.filter(id => id !== cardId);
+        // Return to the shortest column
+        let shortestIdx = 0;
+        cardLayout.cols.forEach((col, i) => {
+            if (col.length < (cardLayout.cols[shortestIdx]?.length ?? Infinity)) shortestIdx = i;
+        });
+        cardLayout.cols[shortestIdx]?.push(cardId);
+    } else {
+        cardLayout.cols = cardLayout.cols.map(col => col.filter(id => id !== cardId));
+        cardLayout.fullWidth.push(cardId);
+    }
+    distributeCards();
+    savePrefs();
+}
+
+/**
+ * Changes the number of columns, redistributing cards from the current flat order.
+ * @param {number} n - New column count (clamped to 1–4).
+ */
+function setNumColumns(n) {
+    if (n < 1 || n > 4) return;
+    const flat = cardLayout.cols.flat();
+    const newCols = Array.from({ length: n }, () => /** @type {string[]} */ ([]));
+    flat.forEach((id, i) => newCols[i % n]?.push(id));
+    cardLayout = { numColumns: n, cols: newCols, fullWidth: cardLayout.fullWidth };
+    if (cardGrid) { cardGrid.remove(); cardGrid = null; }
+    distributeCards();
+    savePrefs();
 }
 
 /** Saves all current preferences (drone, metronome, card state) to localStorage. */
@@ -268,7 +358,7 @@ function savePrefs() {
             droneOctave: droneState.octave,
             droneVolume: droneState.volume,
             refA,
-            cardOrder: getLogicalCardOrder().map(c => c.id),
+            cardLayout: { numColumns: cardLayout.numColumns, cols: cardLayout.cols.map(c => [...c]), fullWidth: [...cardLayout.fullWidth] },
             collapsedCards: [...document.querySelectorAll('.card.collapsed')].map(c => c.id),
         }));
     } catch(e) {}
@@ -299,17 +389,26 @@ const droneRatios = [
     {n:"Oct",s:12,r:2,      f:"2/1"}
 ];
 
-// ─── CARD ORDER RESTORE ───────────────────────────────────────
+// ─── CARD LAYOUT RESTORE ─────────────────────────────────────
 {
     const prefs0 = loadPrefs();
-    if (prefs0.cardOrder?.length) {
-        const parent = /** @type {HTMLElement} */ (/** @type {HTMLElement} */ (document.querySelector('.card')).parentNode);
-        const ref = document.getElementById('app-version-footer');
-        prefs0.cardOrder.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) parent.insertBefore(el, ref);
+    if (prefs0.cardLayout?.cols?.length) {
+        cardLayout = prefs0.cardLayout;
+        // Validate: add any card IDs missing from the saved layout to the last column
+        const knownInLayout = new Set([...cardLayout.cols.flat(), ...cardLayout.fullWidth]);
+        ALL_CARD_IDS.forEach(id => {
+            if (!knownInLayout.has(id)) cardLayout.cols[cardLayout.cols.length - 1]?.push(id);
         });
+    } else if (prefs0.cardOrder?.length) {
+        // Migrate from old flat cardOrder to column-aware layout
+        const n = 2;
+        const cols = Array.from({ length: n }, () => /** @type {string[]} */ ([]));
+        prefs0.cardOrder.forEach((id, i) => cols[i % n]?.push(id));
+        const storedSet = new Set(prefs0.cardOrder);
+        ALL_CARD_IDS.forEach(id => { if (!storedSet.has(id)) cols[cols.length - 1]?.push(id); });
+        cardLayout = { numColumns: n, cols, fullWidth: [] };
     }
+    // else: cardLayout stays as defaultLayout(2) from initialization above
 }
 
 // ─── DRONE STATE ──────────────────────────────────────────────
@@ -557,6 +656,7 @@ initDB().then(()=>{
         releaseMicStream,
         onRunningChange: (v) => { spectrumRunning = v; updateWakeLock(); },
     });
+    initCardLayoutControls();
     initCardDrag();
     distributeCards();
     window.matchMedia('(min-width: 700px)').addEventListener('change', distributeCards);
@@ -640,21 +740,49 @@ function initCardDrag() {
         const others = getCards();
         others.forEach(c => c.classList.remove('drop-above', 'drop-below'));
         const target = findDropTarget(clientX, clientY);
-        if (!target) return;
+        if (!target || !dragging) return;
         const rect = target.getBoundingClientRect();
         const before = clientY < rect.top + rect.height / 2;
-        if (cardGrid) {
-            // Two-column mode: reorder logically then redistribute
-            const order = getLogicalCardOrder().filter(c => c !== dragging);
-            const idx = order.indexOf(target);
-            order.splice(before ? idx : idx + 1, 0, /** @type {Element} */ (dragging));
-            const [col1, col2] = /** @type {HTMLCollectionOf<Element>} */ (cardGrid.children);
-            order.forEach((card, i) => {
-                /** @type {Element} */ (i % 2 === 0 ? col1 : col2).appendChild(card);
-            });
+        const draggingId = dragging.id;
+        const targetId = target.id;
+        if (draggingId === targetId) return;
+
+        if (!cardGrid) {
+            // Mobile single-column: reorder the flat reading list then redistribute
+            const flat = getReadingOrder().filter(el => el !== dragging).map(el => el.id);
+            const pos = flat.indexOf(targetId);
+            flat.splice(before ? pos : pos + 1, 0, draggingId);
+            const n = cardLayout.numColumns;
+            const newCols = Array.from({ length: n }, () => /** @type {string[]} */ ([]));
+            flat.filter(id => !cardLayout.fullWidth.includes(id)).forEach((id, i) => newCols[i % n]?.push(id));
+            cardLayout.cols = newCols;
         } else {
-            /** @type {ParentNode} */ (target.parentNode).insertBefore(/** @type {Element} */ (dragging), before ? target : target.nextSibling);
+            // Desktop multi-column: column-aware — only mutate source and destination columns
+            const srcColIdx = cardLayout.cols.findIndex(col => col.includes(draggingId));
+            const srcIsFullWidth = cardLayout.fullWidth.includes(draggingId);
+            const dstColIdx = cardLayout.cols.findIndex(col => col.includes(targetId));
+            const dstIsFullWidth = cardLayout.fullWidth.includes(targetId);
+            if (srcColIdx < 0 && !srcIsFullWidth) return;
+            if (dstColIdx < 0 && !dstIsFullWidth) return;
+            // Remove from source
+            if (srcColIdx >= 0) {
+                cardLayout.cols[srcColIdx] = cardLayout.cols[srcColIdx]?.filter(id => id !== draggingId) ?? [];
+            } else {
+                cardLayout.fullWidth = cardLayout.fullWidth.filter(id => id !== draggingId);
+            }
+            // Insert at destination
+            if (dstColIdx >= 0) {
+                const dstCol = cardLayout.cols[dstColIdx];
+                if (dstCol) {
+                    const pos = dstCol.indexOf(targetId);
+                    dstCol.splice(before ? pos : pos + 1, 0, draggingId);
+                }
+            } else {
+                const pos = cardLayout.fullWidth.indexOf(targetId);
+                cardLayout.fullWidth.splice(before ? pos : pos + 1, 0, draggingId);
+            }
         }
+        distributeCards();
     }
 
     function endDrag() {
@@ -694,6 +822,64 @@ function initCardDrag() {
             endDrag();
         });
         handle.addEventListener('pointercancel', () => endDrag());
+    });
+}
+
+// ─── CARD LAYOUT CONTROLS ────────────────────────────────────────────────────
+/**
+ * Adds a resize grip to each card's bottom-right corner and wires up the
+ * column-count stepper. The resize grip lets users drag to toggle full-width.
+ */
+function initCardLayoutControls() {
+    const RESIZE_THRESHOLD = 60; // px of horizontal drag needed to toggle span
+
+    document.querySelectorAll('.card').forEach(card => {
+        const grip = document.createElement('span');
+        grip.className = 'card-resize-handle';
+        grip.setAttribute('aria-label', 'Drag to toggle full width');
+        grip.textContent = '⊿';
+        card.appendChild(grip);
+
+        let startX = 0;
+        let hasMoved = false;
+
+        grip.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            startX = e.clientX;
+            hasMoved = false;
+            grip.setPointerCapture(e.pointerId);
+        });
+
+        grip.addEventListener('pointermove', e => {
+            if (Math.abs(e.clientX - startX) > 5) hasMoved = true;
+        });
+
+        grip.addEventListener('pointerup', e => {
+            if (!hasMoved) return;
+            const dx = e.clientX - startX;
+            const isFullWidth = cardLayout.fullWidth.includes(card.id);
+            if (!isFullWidth && dx >= RESIZE_THRESHOLD) {
+                toggleCardFullWidth(card.id);
+            } else if (isFullWidth && dx <= -RESIZE_THRESHOLD) {
+                toggleCardFullWidth(card.id);
+            }
+        });
+
+        grip.addEventListener('pointercancel', () => { hasMoved = false; });
+    });
+
+    // Column count stepper (desktop only — hidden below 700px via CSS)
+    const colCountVal = document.getElementById('colCountVal');
+    if (colCountVal) colCountVal.textContent = String(cardLayout.numColumns);
+
+    document.getElementById('colCountMinus')?.addEventListener('click', () => {
+        setNumColumns(cardLayout.numColumns - 1);
+        if (colCountVal) colCountVal.textContent = String(cardLayout.numColumns);
+    });
+
+    document.getElementById('colCountPlus')?.addEventListener('click', () => {
+        setNumColumns(cardLayout.numColumns + 1);
+        if (colCountVal) colCountVal.textContent = String(cardLayout.numColumns);
     });
 }
 
