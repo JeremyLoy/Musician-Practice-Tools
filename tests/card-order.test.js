@@ -1,39 +1,9 @@
 import { describe, test, expect } from 'bun:test';
-
-const CARD_IDS = ['drone-card', 'metro-card', 'memos-card', 'tuner-card', 'spectrum-card', 'dict-card'];
-
-/**
- * Mirror of defaultLayout() from app.js — distributes IDs evenly across n columns.
- * @param {number} n
- * @returns {{ numColumns: number, placements: { id: string, col: number | 'full' }[] }}
- */
-function defaultLayout(n) {
-    const placements = CARD_IDS.map((id, i) => ({ id, col: i % n }));
-    return { numColumns: n, placements };
-}
-
-/**
- * Mirror of migrateOldLayout() from app.js.
- * @param {{ numColumns: number, cols: string[][], fullWidth: string[] }} old
- * @returns {{ numColumns: number, placements: { id: string, col: number | 'full' }[] }}
- */
-function migrateOldLayout(old) {
-    /** @type {{ id: string, col: number | 'full' }[]} */
-    const placements = [];
-    const maxLen = Math.max(...old.cols.map(c => c.length), 0);
-    for (let row = 0; row < maxLen; row++) {
-        for (let col = 0; col < old.cols.length; col++) {
-            const id = old.cols[col]?.[row];
-            if (id) placements.push({ id, col });
-        }
-    }
-    (old.fullWidth ?? []).forEach(id => placements.push({ id, col: 'full' }));
-    return { numColumns: old.numColumns, placements };
-}
+import { ALL_CARD_IDS, defaultLayout, migrateOldLayout } from '../docs/cards.js';
 
 describe('CardLayoutPrefs', () => {
     test('default card IDs are unique', () => {
-        expect(new Set(CARD_IDS).size).toBe(CARD_IDS.length);
+        expect(new Set(ALL_CARD_IDS).size).toBe(ALL_CARD_IDS.length);
     });
 
     test('default 2-column layout distributes cards evenly', () => {
@@ -42,18 +12,18 @@ describe('CardLayoutPrefs', () => {
         const col1 = layout.placements.filter(p => p.col === 1);
         expect(col0).toHaveLength(3);
         expect(col1).toHaveLength(3);
-        expect(layout.placements.map(p => p.id).sort()).toEqual([...CARD_IDS].sort());
+        expect(layout.placements.map(p => p.id).sort()).toEqual([...ALL_CARD_IDS].sort());
     });
 
     test('default 3-column layout covers all cards', () => {
         const layout = defaultLayout(3);
-        expect(layout.placements.map(p => p.id).sort()).toEqual([...CARD_IDS].sort());
+        expect(layout.placements.map(p => p.id).sort()).toEqual([...ALL_CARD_IDS].sort());
     });
 
     test('default 1-column layout puts all cards in one column', () => {
         const layout = defaultLayout(1);
         expect(layout.placements.every(p => p.col === 0)).toBe(true);
-        expect(layout.placements.map(p => p.id)).toEqual(CARD_IDS);
+        expect(layout.placements.map(p => p.id)).toEqual(ALL_CARD_IDS);
     });
 
     test('cardLayout round-trips through JSON serialization', () => {
@@ -67,7 +37,7 @@ describe('CardLayoutPrefs', () => {
     test('migration from old cols+fullWidth format preserves all IDs', () => {
         const old = { numColumns: 2, cols: [['drone-card', 'memos-card', 'spectrum-card'], ['metro-card', 'tuner-card', 'dict-card']], fullWidth: [] };
         const layout = migrateOldLayout(old);
-        expect(layout.placements.map(p => p.id).sort()).toEqual([...CARD_IDS].sort());
+        expect(layout.placements.map(p => p.id).sort()).toEqual([...ALL_CARD_IDS].sort());
     });
 
     test('migration preserves column assignments', () => {
@@ -81,12 +51,12 @@ describe('CardLayoutPrefs', () => {
     });
 
     test('migration from flat cardOrder to 2-column layout preserves all IDs', () => {
-        const cardOrder = [...CARD_IDS];
+        const cardOrder = [...ALL_CARD_IDS];
         const n = 2;
         const cols = Array.from({ length: n }, () => /** @type {string[]} */ ([]));
         cardOrder.forEach((id, i) => cols[i % n]?.push(id));
         const layout = migrateOldLayout({ numColumns: n, cols, fullWidth: [] });
-        expect(layout.placements.map(p => p.id).sort()).toEqual([...CARD_IDS].sort());
+        expect(layout.placements.map(p => p.id).sort()).toEqual([...ALL_CARD_IDS].sort());
     });
 
     test('migration preserves fullWidth cards', () => {
@@ -99,9 +69,9 @@ describe('CardLayoutPrefs', () => {
     test('missing card ID in restore is added', () => {
         const layout = { numColumns: 2, placements: [{ id: 'drone-card', col: 0 }, { id: 'metro-card', col: 1 }] };
         const knownInLayout = new Set(layout.placements.map(p => p.id));
-        const missing = CARD_IDS.filter(id => !knownInLayout.has(id));
+        const missing = ALL_CARD_IDS.filter(id => !knownInLayout.has(id));
         missing.forEach(id => layout.placements.push({ id, col: 0 }));
-        expect(layout.placements.map(p => p.id).sort()).toEqual([...CARD_IDS].sort());
+        expect(layout.placements.map(p => p.id).sort()).toEqual([...ALL_CARD_IDS].sort());
     });
 
     test('toggleCardFullWidth changes col to full', () => {
@@ -134,7 +104,7 @@ describe('CardLayoutPrefs', () => {
             }
         });
         layout.numColumns = n;
-        expect(layout.placements.map(p => p.id).sort()).toEqual([...CARD_IDS].sort());
+        expect(layout.placements.map(p => p.id).sort()).toEqual([...ALL_CARD_IDS].sort());
         expect(layout.numColumns).toBe(3);
         // All column indices should be 0, 1, or 2
         layout.placements.forEach(p => {

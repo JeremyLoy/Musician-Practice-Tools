@@ -30,7 +30,8 @@ Use **bun** instead of node for any JS execution on the command line (e.g. `bun 
 ```
 docs/index.html        — app shell: HTML + PWA meta tags
 docs/style.css         — all CSS
-docs/app.js            — app shell JS: shared infra, drone, init (~360 lines)
+docs/app.js            — app shell JS: shared infra, init (~200 lines)
+docs/cards.js          — Card layout module (drag-to-reorder, collapse, columns)
 docs/metronome.js      — Metronome module (scheduling, click sounds, UI)
 docs/dictionary.js     — ES module export, ~350 musical terms, ~375 lines
 docs/dict.js           — Musical Dictionary module (search, render)

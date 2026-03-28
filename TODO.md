@@ -1,7 +1,6 @@
 # TODO
 
 - [ ] Convert to TypeScript
-- [ ] Split the JS into separate components — extract `cards.js` (card layout, drag-to-reorder, collapse, column controls — ~370 lines)
 - [ ] Split the JS into separate components — extract `audio.js` (getCtx, getMicStream, releaseMicStream, unlockAudio, updateWakeLock — shared audio infrastructure)
 - [ ] Fullscreen iPhone viewport light doesn't work
 - [ ] Audio playback on speakers
@@ -15,5 +14,6 @@
 - [x] Extract recorder into recorder.js
 - [x] Extract metronome into metronome.js
 - [x] Extract drone into drone.js
+- [x] Split the JS into separate components — extract `cards.js` (card layout, drag-to-reorder, collapse, column controls)
 - [x] Add version to footer
 - [x] Tuner is not accurate — replaced NSDF with pitchfinder YIN algorithm
