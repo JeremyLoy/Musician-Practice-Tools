@@ -32,12 +32,12 @@
         .btn-toggle.active { background: var(--primary); border-color: var(--primary); color: #fff; }
 
         .settings-bar { display: flex; flex-direction: column; gap: 10px; padding: 1rem; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid var(--border); }
-        .drone-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
-        .drone-row .control-group { flex: 1; width: 0; }
-        .drone-row .control-group .stepper { width: 100%; justify-content: space-between; }
-        .drone-row .control-group .stepper .stepper-val { flex: 1; }
-        .drone-row .switch-ui { width: 100%; }
-        .drone-row .switch-ui button { flex: 1; }
+        .control-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+        .control-row .control-group { flex: 1; width: 0; }
+        .control-row .control-group .stepper { width: 100%; justify-content: space-between; }
+        .control-row .control-group .stepper .stepper-val { flex: 1; }
+        .control-row .switch-ui { width: 100%; }
+        .control-row .switch-ui button { flex: 1; }
         .control-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .switch-ui { display: flex; background: var(--bg); border-radius: 8px; padding: 3px; border: 1px solid var(--border); }
         .switch-ui button { background: transparent; color: var(--text-muted); border: none; padding: 10px 12px; font-size: 0.68rem; border-radius: 5px; cursor: pointer; font-weight: 700; min-height: 44px; touch-action: manipulation; transition: all 0.15s; }
@@ -214,7 +214,7 @@
             .metro-controls { width: 100%; min-width: unset; }
 
             /* Drone settings */
-            .drone-row { gap: 8px; }
+            .control-row { gap: 8px; }
         }
 
         /* FULL-WIDTH CARD CONTAINER — can appear between grid sections */

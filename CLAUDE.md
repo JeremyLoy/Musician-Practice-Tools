@@ -104,7 +104,7 @@ initDB() → updateBPM(bpm) [calls buildSchedule()] → droneSync() → renderMe
 - **Audio nodes are ephemeral**: oscillators and sound nodes are created fresh for each note/beat and disconnected when done — never reused.
 - **iOS compatibility is intentional**: the `timeslice=250` in MediaRecorder, the silent MP3 unlock, MediaElement backend for WaveSurfer, and MIME type detection are all deliberate iOS workarounds — don't remove them.
 - **No external frameworks** — vanilla JS throughout; WaveSurfer.js@7 is bundled locally at `docs/wavesurfer.min.js` (do not replace with a CDN link — offline PWA support depends on it).
-- **CSS scoping**: `.drone-row .control-group .stepper` and `.ts-spinner-group .stepper` are intentionally scoped to avoid conflicting with each other. The base `.stepper` styles the drone machine pill; the scoped rules adjust the metronome spinners. Be careful adding new `.stepper` rules.
+- **CSS scoping**: `.control-row .control-group .stepper` and `.ts-spinner-group .stepper` are intentionally scoped to avoid conflicting with each other. The base `.stepper` styles the drone machine pill; the scoped rules adjust the metronome spinners. Be careful adding new `.stepper` rules.
 - **`droneState.color`** holds the waveform type (sine/triangle) — named "color" for historical reasons. Maps to `OscillatorNode.type`.
 - **Memo rendering**: `renderMemos()` always revokes all existing blob URLs before re-rendering to prevent memory leaks.
 

@@ -28,6 +28,7 @@
  * Public API returned by initTuner().
  * @typedef {object} TunerAPI
  * @property {() => void} stop - Stops the tuner and releases resources.
+ * @property {(hz: number) => void} setRefA - Updates the displayed A4 reference frequency.
  */
 /** @type {readonly string[]} */
 const NOTES    = ['C','C♯','D','E♭','E','F','F♯','G','A♭','A','B♭','B'];
@@ -295,5 +296,9 @@ export function initTuner({ getCtx, getRefA, onRefAChange, onRunningChange, getM
         onRefAChange(newVal);
     };
 
-    return { stop };
+    return {
+        stop,
+        /** @param {number} hz */
+        setRefA(hz) { tunerRefVal.textContent = String(hz); },
+    };
 }
