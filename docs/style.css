@@ -168,7 +168,8 @@
 
         /* RESPONSIVE — tablet: 2-column layout (JS distributes cards into flex columns) */
         @media (min-width: 700px) {
-            body { max-width: 1100px; }
+            body { max-width: min(90vw, 1200px); }
+            body[data-num-cols="3"] { max-width: min(90vw, 1600px); }
             .card-grid {
                 display: flex;
                 gap: 1.5rem;
@@ -216,9 +217,12 @@
             .drone-row { gap: 8px; }
         }
 
-        /* FULL-WIDTH CARD CONTAINER */
+        /* FULL-WIDTH CARD CONTAINER — can appear between grid sections */
         .card-full-width { display: flex; flex-direction: column; gap: 1.5rem; }
-        .card-full-width:not(:empty) { margin-top: 1.5rem; }
+        .card-full-width .card { margin-bottom: 0; }
+        .card-grid + .card-full-width,
+        .card-full-width + .card-grid,
+        .card-full-width + .card-full-width { margin-top: 1.5rem; }
 
         /* CARD RESIZE HANDLE — bottom-right corner drag grip */
         .card { position: relative; }

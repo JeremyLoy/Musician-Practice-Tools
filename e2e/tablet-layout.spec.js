@@ -166,7 +166,7 @@ test.describe('Full-width resize grip', () => {
         }
     });
 
-    test('dragging grip right by 80px moves card to full-width container', async ({ page }) => {
+    test('dragging grip right by 80px makes card full-width', async ({ page }) => {
         const grip = page.locator('#drone-card .card-resize-handle');
         const box = await grip.boundingBox();
         await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -174,8 +174,7 @@ test.describe('Full-width resize grip', () => {
         await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2, { steps: 10 });
         await page.mouse.up();
 
-        const parent = await page.locator('#drone-card').evaluate(el => el.parentElement?.className ?? '');
-        expect(parent).toContain('card-full-width');
+        await expect(page.locator('#drone-card')).toHaveClass(/card-is-full-width/);
     });
 
     test('full-width card has card-is-full-width class', async ({ page }) => {
@@ -199,7 +198,7 @@ test.describe('Full-width resize grip', () => {
         await page.mouse.up();
         await expect(page.locator('#drone-card')).toHaveClass(/card-is-full-width/);
 
-        // Scroll card into view — it may have moved below other cards (e.g. dict-card)
+        // Scroll card into view — it may have moved
         await page.locator('#drone-card').scrollIntoViewIfNeeded();
 
         // Now contract back
@@ -209,6 +208,7 @@ test.describe('Full-width resize grip', () => {
         await page.mouse.move(box2.x + box2.width / 2 - 80, box2.y + box2.height / 2, { steps: 10 });
         await page.mouse.up();
 
+        await expect(page.locator('#drone-card')).not.toHaveClass(/card-is-full-width/);
         const parent = await page.locator('#drone-card').evaluate(el => el.parentElement?.className ?? '');
         expect(parent).toContain('card-grid-col');
     });
@@ -224,8 +224,7 @@ test.describe('Full-width resize grip', () => {
         await page.reload();
         await page.waitForSelector('body[data-ready]');
 
-        const parent = await page.locator('#drone-card').evaluate(el => el.parentElement?.className ?? '');
-        expect(parent).toContain('card-full-width');
+        await expect(page.locator('#drone-card')).toHaveClass(/card-is-full-width/);
     });
 });
 
@@ -267,10 +266,10 @@ test.describe('Column count stepper', () => {
         await expect(page.locator('#colCountVal')).toHaveText('1');
     });
 
-    test('clicking plus above 4 has no effect', async ({ page }) => {
+    test('clicking plus above 3 has no effect', async ({ page }) => {
         await page.setViewportSize({ width: 768, height: 1024 });
         for (let i = 0; i < 5; i++) await page.locator('#colCountPlus').click();
-        await expect(page.locator('#colCountVal')).toHaveText('4');
+        await expect(page.locator('#colCountVal')).toHaveText('3');
     });
 
     test('column count persists across reload', async ({ page }) => {
