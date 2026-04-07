@@ -146,7 +146,7 @@ test.describe('Column-isolated drag', () => {
     });
 });
 
-test.describe('Full-width resize grip', () => {
+test.describe('Card span cycling (resize grip)', () => {
     test.beforeEach(async ({ page }) => {
         await page.setViewportSize({ width: 768, height: 2200 });
         await page.goto('/');
@@ -166,65 +166,60 @@ test.describe('Full-width resize grip', () => {
         }
     });
 
-    test('dragging grip right by 80px makes card full-width', async ({ page }) => {
+    test('tapping grip cycles card to full-width (2 columns: 1 → full)', async ({ page }) => {
         const grip = page.locator('#drone-card .card-resize-handle');
-        const box = await grip.boundingBox();
-        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-        await page.mouse.down();
-        await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2, { steps: 10 });
-        await page.mouse.up();
+        await grip.click();
 
         await expect(page.locator('#drone-card')).toHaveClass(/card-is-full-width/);
     });
 
-    test('full-width card has card-is-full-width class', async ({ page }) => {
+    test('tapping grip again returns card to single-column span', async ({ page }) => {
         const grip = page.locator('#drone-card .card-resize-handle');
-        const box = await grip.boundingBox();
-        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-        await page.mouse.down();
-        await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2, { steps: 10 });
-        await page.mouse.up();
-
+        // First tap: 1 → full
+        await grip.click();
         await expect(page.locator('#drone-card')).toHaveClass(/card-is-full-width/);
-    });
-
-    test('dragging grip left by 80px on full-width card returns it to a column', async ({ page }) => {
-        // First expand to full-width
-        const grip = page.locator('#drone-card .card-resize-handle');
-        const box = await grip.boundingBox();
-        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-        await page.mouse.down();
-        await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2, { steps: 10 });
-        await page.mouse.up();
-        await expect(page.locator('#drone-card')).toHaveClass(/card-is-full-width/);
-
-        // Scroll card into view — it may have moved
-        await page.locator('#drone-card').scrollIntoViewIfNeeded();
-
-        // Now contract back
-        const box2 = await grip.boundingBox();
-        await page.mouse.move(box2.x + box2.width / 2, box2.y + box2.height / 2);
-        await page.mouse.down();
-        await page.mouse.move(box2.x + box2.width / 2 - 80, box2.y + box2.height / 2, { steps: 10 });
-        await page.mouse.up();
-
+        // Second tap: full → 1
+        await grip.click();
         await expect(page.locator('#drone-card')).not.toHaveClass(/card-is-full-width/);
-        const parent = await page.locator('#drone-card').evaluate(el => el.parentElement?.className ?? '');
-        expect(parent).toContain('card-grid-col');
     });
 
     test('full-width state persists across reload', async ({ page }) => {
         const grip = page.locator('#drone-card .card-resize-handle');
-        const box = await grip.boundingBox();
-        await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-        await page.mouse.down();
-        await page.mouse.move(box.x + box.width / 2 + 80, box.y + box.height / 2, { steps: 10 });
-        await page.mouse.up();
+        await grip.click();
 
         await page.reload();
         await page.waitForSelector('body[data-ready]');
 
         await expect(page.locator('#drone-card')).toHaveClass(/card-is-full-width/);
+    });
+
+    test('in 3-column mode, tapping cycles through 1 → 2 → full → 1', async ({ page }) => {
+        // Switch to 3 columns
+        await page.locator('#colCountPlus').click();
+        await expect(page.locator('#colCountVal')).toHaveText('3');
+
+        const card = page.locator('#drone-card');
+        const grip = card.locator('.card-resize-handle');
+
+        // Initial: span 1, not full-width
+        await expect(card).not.toHaveClass(/card-is-full-width/);
+
+        // Tap 1: span 1 → span 2 (still not full-width since numColumns=3)
+        await grip.click();
+        await expect(card).not.toHaveClass(/card-is-full-width/);
+        // Verify it spans 2 columns via CSS custom property
+        const span2 = await card.evaluate(el => getComputedStyle(el).getPropertyValue('--card-col-span'));
+        expect(span2.trim()).toBe('2');
+
+        // Tap 2: span 2 → full (span 3 = numColumns)
+        await grip.click();
+        await expect(card).toHaveClass(/card-is-full-width/);
+
+        // Tap 3: full → span 1
+        await grip.click();
+        await expect(card).not.toHaveClass(/card-is-full-width/);
+        const span1 = await card.evaluate(el => getComputedStyle(el).getPropertyValue('--card-col-span'));
+        expect(span1.trim()).toBe('1');
     });
 });
 

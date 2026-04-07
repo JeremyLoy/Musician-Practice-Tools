@@ -8,6 +8,7 @@
  * @typedef {object} CardPlacement
  * @property {string} id - Card element ID.
  * @property {number | 'full'} col - Column index or 'full' for full-width.
+ * @property {number} [colSpan] - Number of grid columns the card spans (1–numColumns). Defaults to 1.
  */
 
 /**
@@ -46,7 +47,7 @@ export const ALL_CARD_IDS = ['drone-card', 'metro-card', 'memos-card', 'tuner-ca
  */
 export function defaultLayout(n) {
     /** @type {CardPlacement[]} */
-    const placements = ALL_CARD_IDS.map((id, i) => ({ id, col: i % n }));
+    const placements = ALL_CARD_IDS.map((id, i) => ({ id, col: i % n, colSpan: 1 }));
     return { numColumns: n, placements };
 }
 
@@ -62,11 +63,41 @@ export function migrateOldLayout(old) {
     for (let row = 0; row < maxLen; row++) {
         for (let col = 0; col < old.cols.length; col++) {
             const id = old.cols[col]?.[row];
-            if (id) placements.push({ id, col });
+            if (id) placements.push({ id, col, colSpan: 1 });
         }
     }
-    (old.fullWidth ?? []).forEach(id => placements.push({ id, col: 'full' }));
+    (old.fullWidth ?? []).forEach(id => placements.push({ id, col: 'full', colSpan: old.numColumns }));
     return { numColumns: old.numColumns, placements };
+}
+
+/**
+ * Ensures every placement has a valid colSpan field.
+ * Migrates old placements that lack colSpan, and clamps values to numColumns.
+ * @param {CardLayoutPrefs} layout
+ * @returns {CardLayoutPrefs}
+ */
+export function ensureColSpan(layout) {
+    for (const p of layout.placements) {
+        if (p.col === 'full') {
+            p.colSpan = layout.numColumns;
+        } else if (typeof p.colSpan !== 'number' || p.colSpan < 1) {
+            p.colSpan = 1;
+        } else if (p.colSpan > layout.numColumns) {
+            p.colSpan = layout.numColumns;
+        }
+    }
+    return layout;
+}
+
+/**
+ * Returns the effective column span for a placement, defaulting to 1.
+ * @param {CardPlacement} p
+ * @param {number} numColumns
+ * @returns {number}
+ */
+export function effectiveSpan(p, numColumns) {
+    if (p.col === 'full') return numColumns;
+    return Math.min(p.colSpan ?? 1, numColumns);
 }
 
 // ─── INIT ───────────────────────────────────────────────────────────────────
@@ -106,37 +137,42 @@ export function initCards(opts) {
                 cardLayout.placements.forEach(pl => { if (typeof pl.col === 'number' && pl.col < colCounts.length) colCounts[pl.col] = (colCounts[pl.col] ?? 0) + 1; });
                 let shortestCol = 0;
                 colCounts.forEach((c, i) => { if (c < (colCounts[shortestCol] ?? Infinity)) shortestCol = i; });
-                cardLayout.placements.push({ id, col: shortestCol });
+                cardLayout.placements.push({ id, col: shortestCol, colSpan: 1 });
             }
         });
+        // Ensure all placements have valid colSpan
+        ensureColSpan(cardLayout);
     }
 
     // ─── LAYOUT HELPERS ─────────────────────────────────────────
 
-    /**
-     * Returns card elements in placement order. Used for mobile single-column layout.
-     * @returns {Element[]}
-     */
-    function getReadingOrder() {
-        /** @type {Element[]} */
-        const order = [];
-        cardLayout.placements.forEach(p => {
-            const el = document.getElementById(p.id);
-            if (el) order.push(el);
-        });
-        return order;
-    }
-
-    /** Syncs the .card-is-full-width class on each card to match placements. */
-    function syncCardFullWidthClasses() {
-        const fullIds = new Set(cardLayout.placements.filter(p => p.col === 'full').map(p => p.id));
+    /** Syncs CSS classes and custom properties on each card to match placements. */
+    function syncCardClasses() {
+        const isWide = window.innerWidth >= 700;
+        const placementMap = new Map(cardLayout.placements.map(p => [p.id, p]));
         document.querySelectorAll('.card').forEach(card => {
-            card.classList.toggle('card-is-full-width', fullIds.has(card.id));
+            const p = placementMap.get(card.id);
+            if (!p) return;
+            const span = effectiveSpan(p, cardLayout.numColumns);
+            const isFull = p.col === 'full' || span >= cardLayout.numColumns;
+            card.classList.toggle('card-is-full-width', isFull);
+            const el = /** @type {HTMLElement} */ (card);
+            el.style.setProperty('--card-col-span', String(span));
+            if (isWide) {
+                if (isFull) {
+                    el.style.setProperty('grid-column', '1 / -1');
+                } else {
+                    // Explicit column placement: col is 0-based, grid-column is 1-based
+                    el.style.setProperty('grid-column', `${/** @type {number} */ (p.col) + 1} / span ${span}`);
+                }
+            } else {
+                el.style.removeProperty('grid-column');
+            }
         });
     }
 
     /**
-     * Distributes cards into the multi-column grid (≥700px) or flat single-column
+     * Distributes cards into a CSS Grid (≥700px) or flat single-column
      * order (<700px). Safe to call multiple times — always re-populates from cardLayout.
      */
     function distributeCards() {
@@ -148,70 +184,50 @@ export function initCards(opts) {
             container.remove();
         });
         if (isWide) {
-            /** @type {Array<{ type: 'grid', cols: string[][] } | { type: 'full', id: string }>} */
-            const sections = [];
-            /** @type {{ type: 'grid', cols: string[][] } | null} */
-            let currentGrid = null;
+            const grid = document.createElement('div');
+            grid.className = 'card-grid';
+            grid.style.setProperty('--num-cols', String(cardLayout.numColumns));
             for (const p of cardLayout.placements) {
-                if (p.col === 'full') {
-                    if (currentGrid) { sections.push(currentGrid); currentGrid = null; }
-                    sections.push({ type: 'full', id: p.id });
-                } else {
-                    if (!currentGrid) {
-                        currentGrid = { type: 'grid', cols: Array.from({ length: cardLayout.numColumns }, () => /** @type {string[]} */ ([])) };
-                    }
-                    currentGrid.cols[p.col]?.push(p.id);
-                }
+                const el = document.getElementById(p.id);
+                if (el) grid.appendChild(el);
             }
-            if (currentGrid) sections.push(currentGrid);
-            for (const section of sections) {
-                if (section.type === 'full') {
-                    const el = document.getElementById(section.id);
-                    if (el) {
-                        const wrapper = document.createElement('div');
-                        wrapper.className = 'card-full-width';
-                        wrapper.appendChild(el);
-                        document.body.insertBefore(wrapper, footer);
-                    }
-                } else {
-                    const grid = document.createElement('div');
-                    grid.className = 'card-grid';
-                    for (let i = 0; i < cardLayout.numColumns; i++) {
-                        const col = document.createElement('div');
-                        col.className = 'card-grid-col';
-                        (section.cols[i] ?? []).forEach(id => {
-                            const el = document.getElementById(id);
-                            if (el) col.appendChild(el);
-                        });
-                        grid.appendChild(col);
-                    }
-                    document.body.insertBefore(grid, footer);
-                }
-            }
+            document.body.insertBefore(grid, footer);
             document.body.dataset.numCols = String(cardLayout.numColumns);
         } else {
-            getReadingOrder().forEach(card => document.body.insertBefore(card, footer));
+            // Mobile: single-column reading order
+            for (const p of cardLayout.placements) {
+                const el = document.getElementById(p.id);
+                if (el) document.body.insertBefore(el, footer);
+            }
             delete document.body.dataset.numCols;
         }
-        syncCardFullWidthClasses();
+        syncCardClasses();
     }
 
     /**
-     * Toggles a card between normal column placement and full-width.
+     * Cycles a card's colSpan: 1 → 2 → ... → numColumns → 1.
+     * When span equals numColumns, also sets col to 'full' for clarity.
      * @param {string} cardId
      */
-    function toggleCardFullWidth(cardId) {
+    function cycleCardSpan(cardId) {
         const idx = cardLayout.placements.findIndex(p => p.id === cardId);
         if (idx < 0) return;
         const p = /** @type {CardPlacement} */ (cardLayout.placements[idx]);
-        if (p.col === 'full') {
-            const colCounts = Array.from({ length: cardLayout.numColumns }, () => 0);
-            cardLayout.placements.forEach(pl => { if (typeof pl.col === 'number' && pl.col < colCounts.length) colCounts[pl.col] = (colCounts[pl.col] ?? 0) + 1; });
-            let shortestCol = 0;
-            colCounts.forEach((c, i) => { if (c < (colCounts[shortestCol] ?? Infinity)) shortestCol = i; });
-            p.col = shortestCol;
-        } else {
+        const currentSpan = effectiveSpan(p, cardLayout.numColumns);
+        const nextSpan = (currentSpan % cardLayout.numColumns) + 1;
+        if (nextSpan >= cardLayout.numColumns) {
             p.col = 'full';
+            p.colSpan = cardLayout.numColumns;
+        } else {
+            // Return to a column if was full-width
+            if (p.col === 'full') {
+                const colCounts = Array.from({ length: cardLayout.numColumns }, () => 0);
+                cardLayout.placements.forEach(pl => { if (typeof pl.col === 'number' && pl.col < colCounts.length) colCounts[pl.col] = (colCounts[pl.col] ?? 0) + 1; });
+                let shortestCol = 0;
+                colCounts.forEach((c, i) => { if (c < (colCounts[shortestCol] ?? Infinity)) shortestCol = i; });
+                p.col = shortestCol;
+            }
+            p.colSpan = nextSpan;
         }
         distributeCards();
         savePrefs();
@@ -219,6 +235,7 @@ export function initCards(opts) {
 
     /**
      * Changes the number of columns, redistributing column cards via round-robin.
+     * Clamps colSpan values that exceed the new column count.
      * @param {number} n - New column count (clamped to 1–3).
      */
     function setNumColumns(n) {
@@ -231,6 +248,8 @@ export function initCards(opts) {
             }
         });
         cardLayout.numColumns = n;
+        // Clamp colSpan and update full-width cards
+        ensureColSpan(cardLayout);
         distributeCards();
         savePrefs();
     }
@@ -334,9 +353,9 @@ export function initCards(opts) {
             const isDesktop = window.innerWidth >= 700;
 
             if (isDesktop && srcPlacement.col !== 'full' && typeof tgtPlacement.col === 'number') {
-                cardLayout.placements.splice(insertIdx, 0, { id: draggingId, col: tgtPlacement.col });
+                cardLayout.placements.splice(insertIdx, 0, { id: draggingId, col: tgtPlacement.col, colSpan: srcPlacement.colSpan ?? 1 });
             } else {
-                cardLayout.placements.splice(insertIdx, 0, { id: draggingId, col: srcPlacement.col });
+                cardLayout.placements.splice(insertIdx, 0, { id: draggingId, col: srcPlacement.col, colSpan: srcPlacement.colSpan ?? 1 });
             }
             distributeCards();
         }
@@ -386,42 +405,36 @@ export function initCards(opts) {
 
     /** Adds resize grips to cards and wires up the column-count stepper. */
     function initCardLayoutControls() {
-        const RESIZE_THRESHOLD = 60;
-
         document.querySelectorAll('.card').forEach(card => {
-            const grip = document.createElement('span');
+            const grip = document.createElement('button');
             grip.className = 'card-resize-handle';
-            grip.setAttribute('aria-label', 'Drag to toggle full width');
+            grip.setAttribute('aria-label', 'Cycle card width');
             grip.textContent = '⊿';
             card.appendChild(grip);
 
-            let gripStartX = 0;
-            let gripHasMoved = false;
-
-            grip.addEventListener('pointerdown', e => {
-                e.preventDefault();
-                gripStartX = e.clientX;
-                gripHasMoved = false;
-                grip.setPointerCapture(e.pointerId);
+            grip.addEventListener('click', e => {
+                e.stopPropagation();
+                cycleCardSpan(card.id);
+                updateGripLabel(card);
             });
-
-            grip.addEventListener('pointermove', e => {
-                if (Math.abs(e.clientX - gripStartX) > 5) gripHasMoved = true;
-            });
-
-            grip.addEventListener('pointerup', e => {
-                if (!gripHasMoved) return;
-                const dx = e.clientX - gripStartX;
-                const isFullWidth = cardLayout.placements.some(p => p.id === card.id && p.col === 'full');
-                if (!isFullWidth && dx >= RESIZE_THRESHOLD) {
-                    toggleCardFullWidth(card.id);
-                } else if (isFullWidth && dx <= -RESIZE_THRESHOLD) {
-                    toggleCardFullWidth(card.id);
-                }
-            });
-
-            grip.addEventListener('pointercancel', () => { gripHasMoved = false; });
         });
+
+        /**
+         * Updates the resize grip label to show current span.
+         * @param {Element} card
+         */
+        function updateGripLabel(card) {
+            const grip = card.querySelector('.card-resize-handle');
+            if (!grip) return;
+            const p = cardLayout.placements.find(pl => pl.id === card.id);
+            if (!p) return;
+            const span = effectiveSpan(p, cardLayout.numColumns);
+            if (span >= cardLayout.numColumns) {
+                grip.textContent = '⊿'; // full-width indicator
+            } else {
+                grip.textContent = '⊿';
+            }
+        }
 
         const colCountVal = document.getElementById('colCountVal');
         if (colCountVal) colCountVal.textContent = String(cardLayout.numColumns);
