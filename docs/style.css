@@ -166,23 +166,20 @@
         .card.collapsed .card-collapse-btn { transform: rotate(-90deg); }
         .card.collapsed > :not(h2) { display: none; }
 
-        /* RESPONSIVE — tablet: 2-column layout (JS distributes cards into flex columns) */
+        /* RESPONSIVE — tablet: CSS Grid tile layout */
         @media (min-width: 700px) {
             body { max-width: min(90vw, 1200px); }
             body[data-num-cols="3"] { max-width: min(90vw, 1600px); }
             .card-grid {
-                display: flex;
+                display: grid;
+                grid-template-columns: repeat(var(--num-cols, 2), 1fr);
                 gap: 1.5rem;
-                align-items: flex-start;
+                align-items: start;
             }
-            .card-grid-col {
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                gap: 1.5rem;
+            .card-grid .card {
+                margin-bottom: 0;
                 min-width: 0;
             }
-            .card-grid .card { margin-bottom: 0; }
         }
 
         /* RESPONSIVE — mobile/tablet first */
@@ -217,24 +214,20 @@
             .control-row { gap: 8px; }
         }
 
-        /* FULL-WIDTH CARD CONTAINER — can appear between grid sections */
-        .card-full-width { display: flex; flex-direction: column; gap: 1.5rem; }
-        .card-full-width .card { margin-bottom: 0; }
-        .card-grid + .card-full-width,
-        .card-full-width + .card-grid,
-        .card-full-width + .card-full-width { margin-top: 1.5rem; }
+        /* FULL-WIDTH CARD — handled by grid-column span, no wrapper needed */
 
-        /* CARD RESIZE HANDLE — bottom-right corner drag grip */
+        /* CARD RESIZE HANDLE — tap to cycle column span */
         .card { position: relative; }
         .card-resize-handle {
             position: absolute; bottom: 0; right: 0;
             width: 44px; height: 44px;
-            cursor: ew-resize;
+            cursor: pointer;
+            background: none; border: none;
             display: flex; align-items: flex-end; justify-content: flex-end;
             padding: 6px;
             color: var(--text-muted);
             opacity: 0.4;
-            touch-action: none;
+            touch-action: manipulation;
             user-select: none;
             transition: opacity 0.15s, color 0.15s;
             font-size: 1.1rem;

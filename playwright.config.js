@@ -12,20 +12,30 @@ function findChromiumExecutable() {
   const defaultPath = chromium.executablePath();
   if (existsSync(defaultPath)) return undefined;
 
-  const cacheDir = join(process.env.HOME || '/root', '.cache', 'ms-playwright');
-  if (!existsSync(cacheDir)) return undefined;
+  const cacheDirs = [
+    join(process.env.HOME || '/root', '.cache', 'ms-playwright'),
+    '/opt/pw-browsers',
+  ];
 
-  const dirs = readdirSync(cacheDir)
-    .filter(d => /^chromium-\d+$/.test(d))
-    .sort((a, b) => Number(b.split('-')[1]) - Number(a.split('-')[1])); // newest first
+  for (const cacheDir of cacheDirs) {
+    if (!existsSync(cacheDir)) continue;
 
-  for (const dir of dirs) {
-    // Newer layout: chrome-linux64/chrome
-    const newLayout = join(cacheDir, dir, 'chrome-linux64', 'chrome');
-    if (existsSync(newLayout)) return newLayout;
-    // Older layout: chrome-linux/chrome
-    const oldLayout = join(cacheDir, dir, 'chrome-linux', 'chrome');
-    if (existsSync(oldLayout)) return oldLayout;
+    const dirs = readdirSync(cacheDir)
+      .filter(d => /^chromium[-_]?\d*$/.test(d) || /^chromium-\d+$/.test(d))
+      .sort((a, b) => {
+        const numA = Number((a.match(/\d+/) || ['0'])[0]);
+        const numB = Number((b.match(/\d+/) || ['0'])[0]);
+        return numB - numA;
+      }); // newest first
+
+    for (const dir of dirs) {
+      // Newer layout: chrome-linux64/chrome
+      const newLayout = join(cacheDir, dir, 'chrome-linux64', 'chrome');
+      if (existsSync(newLayout)) return newLayout;
+      // Older layout: chrome-linux/chrome
+      const oldLayout = join(cacheDir, dir, 'chrome-linux', 'chrome');
+      if (existsSync(oldLayout)) return oldLayout;
+    }
   }
 
   return undefined;
