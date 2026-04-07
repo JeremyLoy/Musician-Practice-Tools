@@ -71,8 +71,8 @@ export function migrateOldLayout(old) {
 }
 
 /**
- * Ensures every placement has a valid colSpan field.
- * Migrates old placements that lack colSpan, and clamps values to numColumns.
+ * Ensures every placement has a valid colSpan field and that col + colSpan
+ * does not exceed numColumns (prevents grid overflow).
  * @param {CardLayoutPrefs} layout
  * @returns {CardLayoutPrefs}
  */
@@ -80,10 +80,17 @@ export function ensureColSpan(layout) {
     for (const p of layout.placements) {
         if (p.col === 'full') {
             p.colSpan = layout.numColumns;
-        } else if (typeof p.colSpan !== 'number' || p.colSpan < 1) {
-            p.colSpan = 1;
-        } else if (p.colSpan > layout.numColumns) {
-            p.colSpan = layout.numColumns;
+        } else {
+            if (typeof p.colSpan !== 'number' || p.colSpan < 1) {
+                p.colSpan = 1;
+            } else if (p.colSpan > layout.numColumns) {
+                p.colSpan = layout.numColumns;
+            }
+            // Clamp col so the card fits: col + colSpan <= numColumns
+            const col = /** @type {number} */ (p.col);
+            if (col + p.colSpan > layout.numColumns) {
+                p.col = Math.max(0, layout.numColumns - p.colSpan);
+            }
         }
     }
     return layout;
@@ -172,6 +179,79 @@ export function initCards(opts) {
     }
 
     /**
+     * Returns true if two column ranges overlap.
+     * @param {number} startA
+     * @param {number} spanA
+     * @param {number} startB
+     * @param {number} spanB
+     * @returns {boolean}
+     */
+    function rangesOverlap(startA, spanA, startB, spanB) {
+        return startA < startB + spanB && startB < startA + spanA;
+    }
+
+    /**
+     * After a card's span or col changes, checks all non-full cards for
+     * column-range overlaps and moves conflicting cards to free columns.
+     * Uses a greedy approach: processes cards in placement order, and for
+     * each card that overlaps a previously-placed card, finds the first
+     * column where it fits without overlapping.
+     * @param {CardLayoutPrefs} layout
+     */
+    function resolveOverlaps(layout) {
+        const n = layout.numColumns;
+        // First pass: clamp col + span
+        for (const p of layout.placements) {
+            if (p.col === 'full') continue;
+            const span = p.colSpan ?? 1;
+            const col = /** @type {number} */ (p.col);
+            if (col + span > n) {
+                p.col = Math.max(0, n - span);
+            }
+        }
+        // Group non-full cards by their current col to detect overlaps.
+        // Process in placement order: each card checks against all prior
+        // placed cards. If overlap, find first free column that fits.
+        /** @type {Array<{p: CardPlacement, col: number, span: number}>} */
+        const placed = [];
+        for (const p of layout.placements) {
+            if (p.col === 'full') continue;
+            const span = p.colSpan ?? 1;
+            let col = /** @type {number} */ (p.col);
+
+            // Check if this card overlaps any already-placed card
+            const hasOverlap = placed.some(other =>
+                rangesOverlap(col, span, other.col, other.span)
+            );
+
+            if (hasOverlap) {
+                // Find first column where this card fits without overlapping
+                let found = false;
+                for (let tryCol = 0; tryCol <= n - span; tryCol++) {
+                    const ok = !placed.some(other =>
+                        rangesOverlap(tryCol, span, other.col, other.span)
+                    );
+                    if (ok) {
+                        col = tryCol;
+                        found = true;
+                        break;
+                    }
+                }
+                // If no fit found in current "row", that's ok — CSS Grid will
+                // push it to the next row automatically. Keep the original col.
+                if (found) {
+                    p.col = col;
+                } else {
+                    // Reset placed for the next "row"
+                    placed.length = 0;
+                    col = /** @type {number} */ (p.col);
+                }
+            }
+            placed.push({ p, col, span });
+        }
+    }
+
+    /**
      * Distributes cards into a CSS Grid (≥700px) or flat single-column
      * order (<700px). Safe to call multiple times — always re-populates from cardLayout.
      */
@@ -207,6 +287,8 @@ export function initCards(opts) {
     /**
      * Cycles a card's colSpan: 1 → 2 → ... → numColumns → 1.
      * When span equals numColumns, also sets col to 'full' for clarity.
+     * Clamps col so col + colSpan never exceeds numColumns, and
+     * reassigns overlapping cards to non-overlapping positions.
      * @param {string} cardId
      */
     function cycleCardSpan(cardId) {
@@ -221,35 +303,43 @@ export function initCards(opts) {
         } else {
             // Return to a column if was full-width
             if (p.col === 'full') {
-                const colCounts = Array.from({ length: cardLayout.numColumns }, () => 0);
-                cardLayout.placements.forEach(pl => { if (typeof pl.col === 'number' && pl.col < colCounts.length) colCounts[pl.col] = (colCounts[pl.col] ?? 0) + 1; });
-                let shortestCol = 0;
-                colCounts.forEach((c, i) => { if (c < (colCounts[shortestCol] ?? Infinity)) shortestCol = i; });
-                p.col = shortestCol;
+                p.col = 0;
             }
             p.colSpan = nextSpan;
+            // Clamp col so card fits within the grid
+            const col = /** @type {number} */ (p.col);
+            if (col + nextSpan > cardLayout.numColumns) {
+                p.col = Math.max(0, cardLayout.numColumns - nextSpan);
+            }
         }
+        // Fix any overlapping cards
+        resolveOverlaps(cardLayout);
         distributeCards();
         savePrefs();
     }
 
     /**
-     * Changes the number of columns, redistributing column cards via round-robin.
-     * Clamps colSpan values that exceed the new column count.
+     * Changes the number of columns, redistributing column cards.
+     * Clamps colSpan values that exceed the new column count and ensures
+     * col + colSpan fits within the grid.
      * @param {number} n - New column count (clamped to 1–3).
      */
     function setNumColumns(n) {
         if (n < 1 || n > 3) return;
+        cardLayout.numColumns = n;
+        // First clamp colSpan and col to fit the new column count
+        ensureColSpan(cardLayout);
+        // Redistribute non-full cards round-robin by column start position
         let colIdx = 0;
         cardLayout.placements.forEach(p => {
             if (p.col !== 'full') {
-                p.col = colIdx % n;
+                const span = p.colSpan ?? 1;
+                // Place at colIdx, but ensure it fits
+                const startCol = colIdx % n;
+                p.col = (startCol + span <= n) ? startCol : Math.max(0, n - span);
                 colIdx++;
             }
         });
-        cardLayout.numColumns = n;
-        // Clamp colSpan and update full-width cards
-        ensureColSpan(cardLayout);
         distributeCards();
         savePrefs();
     }
@@ -352,10 +442,15 @@ export function initCards(opts) {
             const insertIdx = before ? tgtIdx : tgtIdx + 1;
             const isDesktop = window.innerWidth >= 700;
 
+            const span = srcPlacement.colSpan ?? 1;
             if (isDesktop && srcPlacement.col !== 'full' && typeof tgtPlacement.col === 'number') {
-                cardLayout.placements.splice(insertIdx, 0, { id: draggingId, col: tgtPlacement.col, colSpan: srcPlacement.colSpan ?? 1 });
+                // Clamp target col so card fits: col + span <= numColumns
+                const col = (tgtPlacement.col + span <= cardLayout.numColumns)
+                    ? tgtPlacement.col
+                    : Math.max(0, cardLayout.numColumns - span);
+                cardLayout.placements.splice(insertIdx, 0, { id: draggingId, col, colSpan: span });
             } else {
-                cardLayout.placements.splice(insertIdx, 0, { id: draggingId, col: srcPlacement.col, colSpan: srcPlacement.colSpan ?? 1 });
+                cardLayout.placements.splice(insertIdx, 0, { id: draggingId, col: srcPlacement.col, colSpan: span });
             }
             distributeCards();
         }
