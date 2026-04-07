@@ -221,6 +221,76 @@ test.describe('Card span cycling (resize grip)', () => {
         const span1 = await card.evaluate(el => getComputedStyle(el).getPropertyValue('--card-col-span'));
         expect(span1.trim()).toBe('1');
     });
+
+    test('span-2 card and span-1 card share same row in 3-column mode', async ({ page }) => {
+        await page.setViewportSize({ width: 1280, height: 2200 });
+        await page.evaluate(() => { localStorage.removeItem('toolkit_prefs_v2'); });
+        await page.reload();
+        await page.waitForSelector('body[data-ready]');
+
+        // Switch to 3 columns
+        await page.locator('#colCountPlus').click();
+        await expect(page.locator('#colCountVal')).toHaveText('3');
+
+        // Make drone-card span 2 (tap once: 1 → 2)
+        await page.locator('#drone-card .card-resize-handle').click();
+
+        // drone-card should span 2 columns and metro-card should be 1 column
+        // They should share the same grid row (same top position)
+        await page.locator('#drone-card').scrollIntoViewIfNeeded();
+        const positions = await page.evaluate(() => {
+            const ids = ['drone-card', 'metro-card'];
+            return ids.map(id => {
+                const el = document.getElementById(id);
+                if (!el) return null;
+                const r = el.getBoundingClientRect();
+                return { id, top: r.top, left: r.left, width: r.width };
+            });
+        });
+        expect(positions.every(p => p !== null)).toBe(true);
+        const [drone, metro] = /** @type {Array<{id:string,top:number,left:number,width:number}>} */ (positions);
+
+        // Same top position means same row
+        expect(Math.abs(drone.top - metro.top)).toBeLessThan(5);
+        // drone should be wider than metro (2 cols vs 1 col)
+        expect(drone.width).toBeGreaterThan(metro.width * 1.5);
+    });
+
+    test('three span-1 cards share same row in 3-column mode', async ({ page }) => {
+        await page.setViewportSize({ width: 1280, height: 2200 });
+        await page.evaluate(() => { localStorage.removeItem('toolkit_prefs_v2'); });
+        await page.reload();
+        await page.waitForSelector('body[data-ready]');
+
+        // Switch to 3 columns
+        await page.locator('#colCountPlus').click();
+        await expect(page.locator('#colCountVal')).toHaveText('3');
+
+        // Default layout: all span 1, distributed across 3 columns
+        // First 3 cards should share the same row
+        await page.locator('#drone-card').scrollIntoViewIfNeeded();
+        const positions = await page.evaluate(() => {
+            const ids = ['drone-card', 'metro-card', 'memos-card'];
+            return ids.map(id => {
+                const el = document.getElementById(id);
+                if (!el) return null;
+                const r = el.getBoundingClientRect();
+                return { id, top: r.top, left: r.left, width: r.width };
+            });
+        });
+
+        // All three should be present
+        expect(positions.every(p => p !== null)).toBe(true);
+        const [drone, metro, memos] = /** @type {Array<{id:string,top:number,left:number,width:number}>} */ (positions);
+
+        // All three on the same row
+        expect(Math.abs(drone.top - metro.top)).toBeLessThan(5);
+        expect(Math.abs(metro.top - memos.top)).toBeLessThan(5);
+        // All three at different X positions
+        const xPositions = [drone.left, metro.left, memos.left].sort((a, b) => a - b);
+        expect(xPositions[1] - xPositions[0]).toBeGreaterThan(50);
+        expect(xPositions[2] - xPositions[1]).toBeGreaterThan(50);
+    });
 });
 
 test.describe('Column count stepper', () => {

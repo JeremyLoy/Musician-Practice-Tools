@@ -165,6 +165,34 @@ describe('ensureColSpan', () => {
         ensureColSpan(layout);
         expect(layout.placements[0].colSpan).toBe(2);
     });
+
+    test('clamps col so col + colSpan does not exceed numColumns', () => {
+        const layout = { numColumns: 3, placements: [
+            { id: 'drone-card', col: 2, colSpan: 2 },
+        ] };
+        ensureColSpan(layout);
+        // col 2 + span 2 = 4 > 3, so col should be clamped to 1
+        expect(layout.placements[0].col).toBe(1);
+        expect(layout.placements[0].colSpan).toBe(2);
+    });
+
+    test('col stays unchanged when card fits', () => {
+        const layout = { numColumns: 3, placements: [
+            { id: 'drone-card', col: 1, colSpan: 2 },
+        ] };
+        ensureColSpan(layout);
+        // col 1 + span 2 = 3 <= 3, fits fine
+        expect(layout.placements[0].col).toBe(1);
+    });
+
+    test('card with span equal to numColumns gets col 0', () => {
+        const layout = { numColumns: 3, placements: [
+            { id: 'drone-card', col: 2, colSpan: 3 },
+        ] };
+        ensureColSpan(layout);
+        expect(layout.placements[0].col).toBe(0);
+        expect(layout.placements[0].colSpan).toBe(3);
+    });
 });
 
 describe('effectiveSpan', () => {
