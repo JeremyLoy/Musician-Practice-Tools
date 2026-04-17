@@ -29,13 +29,6 @@
 <body>
 
 <h1>🎵 Musician's Practice Toolkit</h1>
-<div class="col-count-ctrl" id="colCountCtrl">
-    <button class="stepper-btn" id="colCountMinus">−</button>
-    <span class="selector-label" style="margin:0;">Columns:</span>
-    <span class="stepper-val" id="colCountVal">2</span>
-    <button class="stepper-btn" id="colCountPlus">+</button>
-</div>
-
 
 <!-- DRONE -->
 <div class="card" id="drone-card">
@@ -174,12 +167,14 @@
 <!-- AUDIO MEMOS -->
 <div class="card" id="memos-card">
     <h2><button class="card-collapse-btn" aria-label="Collapse card">▾</button>Audio Memos <span class="drag-handle" aria-label="Drag to reorder">⠿</span></h2>
-    <div style="text-align:center;">
-        <button id="recordToggle" class="main-action">🎙️ Start Recording</button>
+    <div class="card-body">
+        <div style="text-align:center;">
+            <button id="recordToggle" class="main-action">🎙️ Start Recording</button>
+        </div>
+        <div id="rec-status" style="height:20px;color:var(--primary);font-weight:700;font-size:0.8rem;text-align:center;"></div>
+        <canvas id="liveWaveform" height="80" style="width:100%;display:none;border-radius:8px;background:rgba(0,0,0,0.5);"></canvas>
+        <div id="memoList"></div>
     </div>
-    <div id="rec-status" style="margin-top:0.75rem;height:20px;color:var(--primary);font-weight:700;font-size:0.8rem;text-align:center;"></div>
-    <canvas id="liveWaveform" height="80" style="width:100%;display:none;border-radius:8px;background:rgba(0,0,0,0.5);margin-top:0.75rem;"></canvas>
-    <div id="memoList"></div>
 </div>
 
 <!-- CHROMATIC TUNER -->
@@ -246,8 +241,10 @@
 <!-- MUSICAL DICTIONARY -->
 <div class="card" id="dict-card">
     <h2><button class="card-collapse-btn" aria-label="Collapse card">▾</button>Musical Dictionary <span class="drag-handle" aria-label="Drag to reorder">⠿</span></h2>
-    <input type="text" id="dictSearch" class="dict-search" placeholder="Search terms…" autocomplete="off" spellcheck="false" inputmode="text">
-    <div id="dictResults" class="dict-results"></div>
+    <div class="card-body">
+        <input type="text" id="dictSearch" class="dict-search" placeholder="Search terms…" autocomplete="off" spellcheck="false" inputmode="text">
+        <div id="dictResults" class="dict-results"></div>
+    </div>
 </div>
 
 <script type="module" src="./app.js"></script>

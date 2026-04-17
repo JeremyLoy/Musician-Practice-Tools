@@ -24,9 +24,9 @@ test.describe('Card drag-to-reorder', () => {
         await page.waitForSelector('body[data-ready]');
     });
 
-    test('default card order is drone, metro, memos, tuner, dict', async ({ page }) => {
+    test('default card order matches grid layout reading order', async ({ page }) => {
         const order = await page.locator('.card').evaluateAll(cards => cards.map(c => c.id));
-        expect(order).toEqual(['drone-card', 'metro-card', 'memos-card', 'tuner-card', 'spectrum-card', 'dict-card']);
+        expect(order).toEqual(['drone-card', 'metro-card', 'tuner-card', 'spectrum-card', 'memos-card', 'dict-card']);
     });
 
     test('drag handle meets 44px touch target on mobile', async ({ page }) => {

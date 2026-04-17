@@ -11,7 +11,7 @@
 //   IMPORTANT: Also update APP_VERSION in app.js to the same string so the
 //   footer displays the correct version. Always bump both when deploying.
 
-const CACHE_VERSION = 'toolkit-20260407-1400';
+const CACHE_VERSION = 'toolkit-20260417-0351';
 
 // Every file the app needs to work offline.
 // If you add a new file to docs/, add it to this list too.
@@ -28,6 +28,7 @@ const ASSETS = [
   './spectrum.js',
   './drone.js',
   './cards.js',
+  './grid-layout.js',
   './wavesurfer.min.js',
   './pitchfinder.min.js',
   './manifest.json',

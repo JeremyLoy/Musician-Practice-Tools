@@ -1,553 +1,501 @@
 // @ts-check
-// ─── CARD LAYOUT, DRAG-TO-REORDER, COLLAPSE, COLUMN CONTROLS ────────────────
+// ─── GRID-BASED CARD LAYOUT ─────────────────────────────────────────────────
+// Grafana-style: cards are placed at integer (x, y, w, h) in a 12-column grid
+// of fixed-height rows. Drag-to-any-cell, two-axis resize, vertical
+// compaction. Mobile (<700px) collapses to a single-column stack ordered by
+// (y, x) — drag-to-reorder is supported there too via array re-ordering.
+
+/** @import { GridItem, GridLayoutPrefs } from './grid-layout.js' */
+import {
+    GRID_COLS,
+    ROW_HEIGHT_PX,
+    ALL_CARD_IDS,
+    specFor,
+    defaultGridLayout,
+    validate,
+    compactVertical,
+    moveItem,
+    resizeItem,
+    sortByPosition,
+} from './grid-layout.js';
 
 // ─── Type Definitions ────────────────────────────────────────────────────────
 
 /**
- * Where a card is placed: column index (0-based) or 'full' for full-width.
- * @typedef {object} CardPlacement
- * @property {string} id - Card element ID.
- * @property {number | 'full'} col - Column index or 'full' for full-width.
- * @property {number} [colSpan] - Number of grid columns the card spans (1–numColumns). Defaults to 1.
- */
-
-/**
- * Per-column card layout configuration.
- * @typedef {object} CardLayoutPrefs
- * @property {number} numColumns - Number of columns (default 2, range 1–3).
- * @property {CardPlacement[]} placements - Ordered card placements.
- */
-
-/**
- * Callbacks passed to initCards.
  * @typedef {object} CardsOptions
  * @property {() => void} savePrefs - Persist all prefs to localStorage.
- * @property {() => { collapsedCards?: string[], cardLayout?: CardLayoutPrefs, cardOrder?: string[] }} loadPrefs - Read saved prefs.
+ * @property {() => { collapsedCards?: string[], cardLayout?: GridLayoutPrefs }} loadPrefs - Read saved prefs.
  */
 
 /**
- * Public API returned by initCards.
  * @typedef {object} CardsAPI
- * @property {() => void} distributeCards - Re-layout cards into columns or single-column.
- * @property {() => CardLayoutPrefs} getCardLayout - Returns the current card layout state.
+ * @property {() => void} render - Re-layout cards into grid or single-column stack.
+ * @property {() => GridLayoutPrefs} getCardLayout - Returns the current grid layout state.
  * @property {() => string[]} getCollapsedCardIds - Returns IDs of currently collapsed cards.
  */
 
+// Re-export for app.js typedef imports.
+export { ALL_CARD_IDS };
+
 // ─── CONSTANTS ──────────────────────────────────────────────────────────────
 
-/** Canonical list of all card element IDs in their default visual order. */
-export const ALL_CARD_IDS = ['drone-card', 'metro-card', 'memos-card', 'tuner-card', 'spectrum-card', 'dict-card'];
-
-// ─── PURE FUNCTIONS ─────────────────────────────────────────────────────────
-
-/**
- * Returns a default CardLayoutPrefs distributing cards evenly across n columns.
- * @param {number} n - Number of columns.
- * @returns {CardLayoutPrefs}
- */
-export function defaultLayout(n) {
-    /** @type {CardPlacement[]} */
-    const placements = ALL_CARD_IDS.map((id, i) => ({ id, col: i % n, colSpan: 1 }));
-    return { numColumns: n, placements };
-}
-
-/**
- * Migrates old { cols, fullWidth } format to unified placements array.
- * @param {{ numColumns: number, cols: string[][], fullWidth: string[] }} old
- * @returns {CardLayoutPrefs}
- */
-export function migrateOldLayout(old) {
-    /** @type {CardPlacement[]} */
-    const placements = [];
-    const maxLen = Math.max(...old.cols.map(c => c.length), 0);
-    for (let row = 0; row < maxLen; row++) {
-        for (let col = 0; col < old.cols.length; col++) {
-            const id = old.cols[col]?.[row];
-            if (id) placements.push({ id, col, colSpan: 1 });
-        }
-    }
-    (old.fullWidth ?? []).forEach(id => placements.push({ id, col: 'full', colSpan: old.numColumns }));
-    return { numColumns: old.numColumns, placements };
-}
-
-/**
- * Ensures every placement has a valid colSpan field and that col + colSpan
- * does not exceed numColumns (prevents grid overflow).
- * @param {CardLayoutPrefs} layout
- * @returns {CardLayoutPrefs}
- */
-export function ensureColSpan(layout) {
-    for (const p of layout.placements) {
-        if (p.col === 'full') {
-            p.colSpan = layout.numColumns;
-        } else {
-            if (typeof p.colSpan !== 'number' || p.colSpan < 1) {
-                p.colSpan = 1;
-            } else if (p.colSpan > layout.numColumns) {
-                p.colSpan = layout.numColumns;
-            }
-            // Clamp col so the card fits: col + colSpan <= numColumns
-            const col = /** @type {number} */ (p.col);
-            if (col + p.colSpan > layout.numColumns) {
-                p.col = Math.max(0, layout.numColumns - p.colSpan);
-            }
-        }
-    }
-    return layout;
-}
-
-/**
- * Returns the effective column span for a placement, defaulting to 1.
- * @param {CardPlacement} p
- * @param {number} numColumns
- * @returns {number}
- */
-export function effectiveSpan(p, numColumns) {
-    if (p.col === 'full') return numColumns;
-    return Math.min(p.colSpan ?? 1, numColumns);
-}
+const MOBILE_BREAKPOINT = 700;
+const DRAG_THRESHOLD_PX = 5;
+const SCROLL_ZONE_PX = 80;
+const SCROLL_SPEED_PX = 8;
+const GRID_GAP_PX = 24; // matches CSS gap on .card-grid
 
 // ─── INIT ───────────────────────────────────────────────────────────────────
 
 /**
- * Initialises the card layout system: restores layout from prefs, sets up
- * drag-to-reorder, collapse toggles, resize grips, and column-count stepper.
+ * Initialises the grid card layout: restores layout from prefs, sets up
+ * drag-to-cell, two-axis resize, and collapse toggles.
  * @param {CardsOptions} opts
  * @returns {CardsAPI}
  */
 export function initCards(opts) {
     const { savePrefs, loadPrefs } = opts;
 
-    // ─── CARD LAYOUT STATE ──────────────────────────────────────
-    /** @type {CardLayoutPrefs} */
-    let cardLayout = defaultLayout(2);
-
-    // ─── RESTORE LAYOUT FROM PREFS ──────────────────────────────
+    /** @type {GridLayoutPrefs} */
+    let layout = defaultGridLayout();
     {
         const prefs0 = loadPrefs();
-        if (prefs0.cardLayout?.placements?.length) {
-            cardLayout = prefs0.cardLayout;
-        } else if (/** @type {any} */ (prefs0.cardLayout)?.cols?.length) {
-            cardLayout = migrateOldLayout(/** @type {any} */ (prefs0.cardLayout));
-        } else if (prefs0.cardOrder?.length) {
-            const n = 2;
-            /** @type {string[][]} */
-            const cols = Array.from({ length: n }, () => /** @type {string[]} */ ([]));
-            prefs0.cardOrder.forEach((id, i) => cols[i % n]?.push(id));
-            cardLayout = migrateOldLayout({ numColumns: n, cols, fullWidth: [] });
-        }
-        // Validate: add any card IDs missing from the saved layout
-        const knownInLayout = new Set(cardLayout.placements.map(p => p.id));
-        ALL_CARD_IDS.forEach(id => {
-            if (!knownInLayout.has(id)) {
-                const colCounts = Array.from({ length: cardLayout.numColumns }, () => 0);
-                cardLayout.placements.forEach(pl => { if (typeof pl.col === 'number' && pl.col < colCounts.length) colCounts[pl.col] = (colCounts[pl.col] ?? 0) + 1; });
-                let shortestCol = 0;
-                colCounts.forEach((c, i) => { if (c < (colCounts[shortestCol] ?? Infinity)) shortestCol = i; });
-                cardLayout.placements.push({ id, col: shortestCol, colSpan: 1 });
-            }
-        });
-        // Ensure all placements have valid colSpan
-        ensureColSpan(cardLayout);
-    }
-
-    // ─── LAYOUT HELPERS ─────────────────────────────────────────
-
-    /** Syncs CSS classes and custom properties on each card to match placements. */
-    function syncCardClasses() {
-        const isWide = window.innerWidth >= 700;
-        const placementMap = new Map(cardLayout.placements.map(p => [p.id, p]));
-        document.querySelectorAll('.card').forEach(card => {
-            const p = placementMap.get(card.id);
-            if (!p) return;
-            const span = effectiveSpan(p, cardLayout.numColumns);
-            const isFull = p.col === 'full' || span >= cardLayout.numColumns;
-            card.classList.toggle('card-is-full-width', isFull);
-            const el = /** @type {HTMLElement} */ (card);
-            el.style.setProperty('--card-col-span', String(span));
-            if (isWide) {
-                if (isFull) {
-                    el.style.setProperty('grid-column', '1 / -1');
-                } else {
-                    // Explicit column placement: col is 0-based, grid-column is 1-based
-                    el.style.setProperty('grid-column', `${/** @type {number} */ (p.col) + 1} / span ${span}`);
-                }
-            } else {
-                el.style.removeProperty('grid-column');
-            }
-        });
-    }
-
-    /**
-     * Returns true if two column ranges overlap.
-     * @param {number} startA
-     * @param {number} spanA
-     * @param {number} startB
-     * @param {number} spanB
-     * @returns {boolean}
-     */
-    function rangesOverlap(startA, spanA, startB, spanB) {
-        return startA < startB + spanB && startB < startA + spanA;
-    }
-
-    /**
-     * After a card's span or col changes, checks all non-full cards for
-     * column-range overlaps and moves conflicting cards to free columns.
-     * Uses a greedy approach: processes cards in placement order, and for
-     * each card that overlaps a previously-placed card, finds the first
-     * column where it fits without overlapping.
-     * @param {CardLayoutPrefs} layout
-     */
-    function resolveOverlaps(layout) {
-        const n = layout.numColumns;
-        // First pass: clamp col + span
-        for (const p of layout.placements) {
-            if (p.col === 'full') continue;
-            const span = p.colSpan ?? 1;
-            const col = /** @type {number} */ (p.col);
-            if (col + span > n) {
-                p.col = Math.max(0, n - span);
-            }
-        }
-        // Group non-full cards by their current col to detect overlaps.
-        // Process in placement order: each card checks against all prior
-        // placed cards. If overlap, find first free column that fits.
-        /** @type {Array<{p: CardPlacement, col: number, span: number}>} */
-        const placed = [];
-        for (const p of layout.placements) {
-            if (p.col === 'full') continue;
-            const span = p.colSpan ?? 1;
-            let col = /** @type {number} */ (p.col);
-
-            // Check if this card overlaps any already-placed card
-            const hasOverlap = placed.some(other =>
-                rangesOverlap(col, span, other.col, other.span)
-            );
-
-            if (hasOverlap) {
-                // Find first column where this card fits without overlapping
-                let found = false;
-                for (let tryCol = 0; tryCol <= n - span; tryCol++) {
-                    const ok = !placed.some(other =>
-                        rangesOverlap(tryCol, span, other.col, other.span)
-                    );
-                    if (ok) {
-                        col = tryCol;
-                        found = true;
-                        break;
-                    }
-                }
-                // If no fit found in current "row", that's ok — CSS Grid will
-                // push it to the next row automatically. Keep the original col.
-                if (found) {
-                    p.col = col;
-                } else {
-                    // Reset placed for the next "row"
-                    placed.length = 0;
-                    col = /** @type {number} */ (p.col);
-                }
-            }
-            placed.push({ p, col, span });
+        // Only accept prefs that match the new shape ({items: GridItem[]}).
+        // Anything else (legacy {numColumns, placements} or absent) → defaults.
+        if (Array.isArray(prefs0.cardLayout?.items)) {
+            layout = { items: prefs0.cardLayout.items.map(it => ({ ...it })) };
+            validate(layout);
+            compactVertical(layout.items);
         }
     }
 
+    // ─── DOM REFS ───────────────────────────────────────────────
+    const footer = document.getElementById('app-version-footer');
+
+    /** @returns {boolean} */
+    function isDesktop() {
+        return window.innerWidth >= MOBILE_BREAKPOINT;
+    }
+
+    // ─── RENDER ─────────────────────────────────────────────────
+
     /**
-     * Distributes cards into a CSS Grid (≥700px) or flat single-column
-     * order (<700px). Safe to call multiple times — always re-populates from cardLayout.
+     * Re-renders the layout. On desktop, builds a CSS grid with explicit
+     * placement; on mobile, stacks cards in (y, x) reading order.
+     * Safe to call repeatedly.
      */
-    function distributeCards() {
-        const isWide = window.innerWidth >= 700;
-        const footer = document.getElementById('app-version-footer');
-        // Rescue all cards back into body before rebuilding layout containers
-        document.querySelectorAll('.card-grid, .card-full-width').forEach(container => {
-            [...container.querySelectorAll('.card')].forEach(card => document.body.insertBefore(card, footer));
-            container.remove();
+    function render() {
+        // Always rescue cards back to body before rebuilding container.
+        document.querySelectorAll('.card-grid').forEach(grid => {
+            [...grid.querySelectorAll('.card')].forEach(card => document.body.insertBefore(card, footer));
+            grid.remove();
         });
-        if (isWide) {
+
+        if (isDesktop()) {
             const grid = document.createElement('div');
             grid.className = 'card-grid';
-            grid.style.setProperty('--num-cols', String(cardLayout.numColumns));
-            for (const p of cardLayout.placements) {
-                const el = document.getElementById(p.id);
-                if (el) grid.appendChild(el);
+            grid.style.setProperty('--row-h', `${ROW_HEIGHT_PX}px`);
+            grid.style.setProperty('--grid-cols', String(GRID_COLS));
+            for (const it of layout.items) {
+                const el = /** @type {HTMLElement | null} */ (document.getElementById(it.id));
+                if (!el) continue;
+                applyGridStyle(el, it);
+                grid.appendChild(el);
             }
             document.body.insertBefore(grid, footer);
-            document.body.dataset.numCols = String(cardLayout.numColumns);
         } else {
-            // Mobile: single-column reading order
-            for (const p of cardLayout.placements) {
-                const el = document.getElementById(p.id);
-                if (el) document.body.insertBefore(el, footer);
+            for (const it of sortByPosition(layout.items)) {
+                const el = /** @type {HTMLElement | null} */ (document.getElementById(it.id));
+                if (!el) continue;
+                clearGridStyle(el);
+                document.body.insertBefore(el, footer);
             }
-            delete document.body.dataset.numCols;
         }
-        syncCardClasses();
     }
 
     /**
-     * Cycles a card's colSpan: 1 → 2 → ... → numColumns → 1.
-     * When span equals numColumns, also sets col to 'full' for clarity.
-     * Clamps col so col + colSpan never exceeds numColumns, and
-     * reassigns overlapping cards to non-overlapping positions.
-     * @param {string} cardId
+     * Applies grid-column / grid-row styles to a card element.
+     * @param {HTMLElement} el
+     * @param {GridItem} it
      */
-    function cycleCardSpan(cardId) {
-        const idx = cardLayout.placements.findIndex(p => p.id === cardId);
-        if (idx < 0) return;
-        const p = /** @type {CardPlacement} */ (cardLayout.placements[idx]);
-        const currentSpan = effectiveSpan(p, cardLayout.numColumns);
-        const nextSpan = (currentSpan % cardLayout.numColumns) + 1;
-        if (nextSpan >= cardLayout.numColumns) {
-            p.col = 'full';
-            p.colSpan = cardLayout.numColumns;
-        } else {
-            // Return to a column if was full-width
-            if (p.col === 'full') {
-                p.col = 0;
-            }
-            p.colSpan = nextSpan;
-            // Clamp col so card fits within the grid
-            const col = /** @type {number} */ (p.col);
-            if (col + nextSpan > cardLayout.numColumns) {
-                p.col = Math.max(0, cardLayout.numColumns - nextSpan);
-            }
-        }
-        // Fix any overlapping cards
-        resolveOverlaps(cardLayout);
-        distributeCards();
-        savePrefs();
+    function applyGridStyle(el, it) {
+        el.style.gridColumn = `${it.x + 1} / span ${it.w}`;
+        el.style.gridRow = `${it.y + 1} / span ${it.h}`;
+    }
+
+    /** @param {HTMLElement} el */
+    function clearGridStyle(el) {
+        el.style.gridColumn = '';
+        el.style.gridRow = '';
+    }
+
+    // ─── PIXEL ↔ GRID CONVERSION ────────────────────────────────
+
+    /**
+     * Returns the grid container element on desktop, or null on mobile.
+     * @returns {HTMLElement | null}
+     */
+    function getGridEl() {
+        return /** @type {HTMLElement | null} */ (document.querySelector('.card-grid'));
     }
 
     /**
-     * Changes the number of columns, redistributing column cards.
-     * Clamps colSpan values that exceed the new column count and ensures
-     * col + colSpan fits within the grid.
-     * @param {number} n - New column count (clamped to 1–3).
+     * Converts a viewport pixel position to a grid cell.
+     * @param {number} clientX
+     * @param {number} clientY
+     * @returns {{ x: number, y: number } | null}
      */
-    function setNumColumns(n) {
-        if (n < 1 || n > 3) return;
-        cardLayout.numColumns = n;
-        // First clamp colSpan and col to fit the new column count
-        ensureColSpan(cardLayout);
-        // Redistribute non-full cards round-robin by column start position
-        let colIdx = 0;
-        cardLayout.placements.forEach(p => {
-            if (p.col !== 'full') {
-                const span = p.colSpan ?? 1;
-                // Place at colIdx, but ensure it fits
-                const startCol = colIdx % n;
-                p.col = (startCol + span <= n) ? startCol : Math.max(0, n - span);
-                colIdx++;
-            }
-        });
-        distributeCards();
-        savePrefs();
+    function pxToCell(clientX, clientY) {
+        const grid = getGridEl();
+        if (!grid) return null;
+        const r = grid.getBoundingClientRect();
+        const colW = r.width / GRID_COLS;
+        const x = Math.round((clientX - r.left) / colW);
+        const y = Math.round((clientY - r.top) / ROW_HEIGHT_PX);
+        return { x, y };
     }
 
-    // ─── CARD DRAG-TO-REORDER ───────────────────────────────────
+    // ─── DROP / RESIZE PLACEHOLDER ──────────────────────────────
 
-    /** Sets up pointer-based drag-to-reorder for feature cards with auto-scroll. */
-    function initCardDrag() {
-        /** @type {HTMLElement | null} */
-        let dragging = null;
-        /** @type {number | null} */
-        let scrollRaf = null;
-        let hasMoved = false;
-        const DRAG_THRESHOLD = 5;
-        let startX = 0, startY = 0;
-        const SCROLL_ZONE = 80;
-        const SCROLL_SPEED = 8;
+    /** @type {HTMLElement | null} */
+    let placeholder = null;
 
-        /** @returns {void} */
-        function stopAutoScroll() {
-            if (scrollRaf) { cancelAnimationFrame(scrollRaf); scrollRaf = null; }
+    /** Creates (or reuses) the placeholder ghost in the grid. */
+    function ensurePlaceholder() {
+        if (placeholder && placeholder.isConnected) return placeholder;
+        const grid = getGridEl();
+        if (!grid) return null;
+        placeholder = document.createElement('div');
+        placeholder.className = 'grid-drop-ghost';
+        grid.appendChild(placeholder);
+        return placeholder;
+    }
+
+    /**
+     * Positions the placeholder over the grid at (x, y, w, h).
+     * @param {number} x
+     * @param {number} y
+     * @param {number} w
+     * @param {number} h
+     */
+    function showPlaceholder(x, y, w, h) {
+        const ph = ensurePlaceholder();
+        if (!ph) return;
+        ph.style.gridColumn = `${x + 1} / span ${w}`;
+        ph.style.gridRow = `${y + 1} / span ${h}`;
+    }
+
+    function hidePlaceholder() {
+        if (placeholder) {
+            placeholder.remove();
+            placeholder = null;
         }
+    }
 
-        /** @param {number} direction */
-        function startAutoScroll(direction) {
-            stopAutoScroll();
-            /** @returns {void} */
-            function step() { window.scrollBy(0, direction * SCROLL_SPEED); scrollRaf = requestAnimationFrame(step); }
+    // ─── AUTO-SCROLL DURING DRAG/RESIZE ─────────────────────────
+
+    /** @type {number | null} */
+    let scrollRaf = null;
+
+    function stopAutoScroll() {
+        if (scrollRaf !== null) {
+            cancelAnimationFrame(scrollRaf);
+            scrollRaf = null;
+        }
+    }
+
+    /** @param {number} direction */
+    function startAutoScroll(direction) {
+        stopAutoScroll();
+        function step() {
+            window.scrollBy(0, direction * SCROLL_SPEED_PX);
             scrollRaf = requestAnimationFrame(step);
         }
+        scrollRaf = requestAnimationFrame(step);
+    }
 
-        /** @param {number} clientY */
-        function tickAutoScroll(clientY) {
-            if (clientY < SCROLL_ZONE) startAutoScroll(-1);
-            else if (clientY > window.innerHeight - SCROLL_ZONE) startAutoScroll(1);
-            else stopAutoScroll();
+    /** @param {number} clientY */
+    function tickAutoScroll(clientY) {
+        if (clientY < SCROLL_ZONE_PX) startAutoScroll(-1);
+        else if (clientY > window.innerHeight - SCROLL_ZONE_PX) startAutoScroll(1);
+        else stopAutoScroll();
+    }
+
+    // ─── DRAG: DESKTOP (free-form to any cell) ──────────────────
+
+    /**
+     * @param {HTMLElement} card
+     * @param {PointerEvent} startEvent
+     */
+    function beginDesktopDrag(card, startEvent) {
+        const found = layout.items.find(it => it.id === card.id);
+        if (!found) return;
+        // Snapshot dimensions so the closures don't have to re-narrow.
+        const itemW = found.w;
+        const itemH = found.h;
+        const startX = startEvent.clientX;
+        const startY = startEvent.clientY;
+        let moved = false;
+
+        // Pointer offset within the card (so the card "sticks" to the cursor)
+        const cardRect = card.getBoundingClientRect();
+        const offsetX = startX - cardRect.left;
+        const offsetY = startY - cardRect.top;
+
+        /** @param {PointerEvent} e */
+        function onMove(e) {
+            if (!moved) {
+                if (Math.hypot(e.clientX - startX, e.clientY - startY) < DRAG_THRESHOLD_PX) return;
+                moved = true;
+                card.classList.add('dragging');
+            }
+            tickAutoScroll(e.clientY);
+            // The reference point for snapping is the card's top-left corner,
+            // i.e. cursor minus the original pointer-to-corner offset.
+            const cell = pxToCell(e.clientX - offsetX, e.clientY - offsetY);
+            if (!cell) return;
+            const x = Math.max(0, Math.min(GRID_COLS - itemW, cell.x));
+            const y = Math.max(0, cell.y);
+            showPlaceholder(x, y, itemW, itemH);
         }
 
-        /** @returns {Element[]} */
-        function getCards() { return [...document.querySelectorAll('.card:not(.dragging)')]; }
+        /** @param {PointerEvent} e */
+        function onUp(e) {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
+            stopAutoScroll();
+            card.classList.remove('dragging');
+            hidePlaceholder();
+            if (!moved) return;
+            const cell = pxToCell(e.clientX - offsetX, e.clientY - offsetY);
+            if (!cell) return;
+            const x = Math.max(0, Math.min(GRID_COLS - itemW, cell.x));
+            const y = Math.max(0, cell.y);
+            moveItem(layout.items, card.id, x, y);
+            render();
+            savePrefs();
+        }
 
-        /**
-         * @param {number} clientX
-         * @param {number} clientY
-         * @returns {Element | null}
-         */
-        function findDropTarget(clientX, clientY) {
-            const others = getCards();
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
+    }
+
+    // ─── DRAG: MOBILE (reorder in single-column stack) ──────────
+
+    /**
+     * @param {HTMLElement} card
+     * @param {PointerEvent} startEvent
+     */
+    function beginMobileDrag(card, startEvent) {
+        const startX = startEvent.clientX;
+        const startY = startEvent.clientY;
+        let moved = false;
+
+        /** @param {number} clientX @param {number} clientY @returns {HTMLElement | null} */
+        function findTarget(clientX, clientY) {
+            const others = [...document.querySelectorAll('.card:not(.dragging)')];
             const hit = others.find(c => {
                 const r = c.getBoundingClientRect();
                 return clientX >= r.left && clientX <= r.right && clientY >= r.top && clientY <= r.bottom;
             });
-            if (hit) return hit;
+            if (hit) return /** @type {HTMLElement} */ (hit);
+            // Nearest by centre distance as fallback.
             let nearest = null, minDist = Infinity;
-            others.forEach(c => {
+            for (const c of others) {
                 const r = c.getBoundingClientRect();
-                const dist = Math.hypot(clientX - (r.left + r.width / 2), clientY - (r.top + r.height / 2));
-                if (dist < minDist) { minDist = dist; nearest = c; }
+                const d = Math.hypot(clientX - (r.left + r.width / 2), clientY - (r.top + r.height / 2));
+                if (d < minDist) { minDist = d; nearest = c; }
+            }
+            return /** @type {HTMLElement | null} */ (nearest);
+        }
+
+        /** @param {number} clientX @param {number} clientY */
+        function updateIndicators(clientX, clientY) {
+            document.querySelectorAll('.card.drop-above, .card.drop-below').forEach(c => {
+                c.classList.remove('drop-above', 'drop-below');
             });
-            return nearest;
+            const target = findTarget(clientX, clientY);
+            if (!target || target === card) return;
+            const r = target.getBoundingClientRect();
+            target.classList.add(clientY < r.top + r.height / 2 ? 'drop-above' : 'drop-below');
         }
 
-        /**
-         * @param {number} clientX
-         * @param {number} clientY
-         */
-        function updateDropIndicators(clientX, clientY) {
-            getCards().forEach(c => c.classList.remove('drop-above', 'drop-below'));
-            const target = findDropTarget(clientX, clientY);
-            if (target) {
-                const rect = target.getBoundingClientRect();
-                target.classList.add(clientY < rect.top + rect.height / 2 ? 'drop-above' : 'drop-below');
+        /** @param {PointerEvent} e */
+        function onMove(e) {
+            if (!moved) {
+                if (Math.hypot(e.clientX - startX, e.clientY - startY) < DRAG_THRESHOLD_PX) return;
+                moved = true;
+                card.classList.add('dragging');
             }
+            tickAutoScroll(e.clientY);
+            updateIndicators(e.clientX, e.clientY);
         }
 
-        /**
-         * @param {number} clientX
-         * @param {number} clientY
-         */
-        function applyDrop(clientX, clientY) {
-            const others = getCards();
-            others.forEach(c => c.classList.remove('drop-above', 'drop-below'));
-            const target = findDropTarget(clientX, clientY);
-            if (!target || !dragging) return;
-            const rect = target.getBoundingClientRect();
-            const before = clientY < rect.top + rect.height / 2;
-            const draggingId = dragging.id;
-            const targetId = target.id;
-            if (draggingId === targetId) return;
-
-            const srcIdx = cardLayout.placements.findIndex(p => p.id === draggingId);
-            if (srcIdx < 0) return;
-            const srcPlacement = /** @type {CardPlacement} */ (cardLayout.placements[srcIdx]);
-            cardLayout.placements.splice(srcIdx, 1);
-
-            const tgtIdx = cardLayout.placements.findIndex(p => p.id === targetId);
-            if (tgtIdx < 0) { cardLayout.placements.splice(srcIdx, 0, srcPlacement); return; }
-            const tgtPlacement = /** @type {CardPlacement} */ (cardLayout.placements[tgtIdx]);
-
-            const insertIdx = before ? tgtIdx : tgtIdx + 1;
-            const isDesktop = window.innerWidth >= 700;
-
-            const span = srcPlacement.colSpan ?? 1;
-            if (isDesktop && srcPlacement.col !== 'full' && typeof tgtPlacement.col === 'number') {
-                // Clamp target col so card fits: col + span <= numColumns
-                const col = (tgtPlacement.col + span <= cardLayout.numColumns)
-                    ? tgtPlacement.col
-                    : Math.max(0, cardLayout.numColumns - span);
-                cardLayout.placements.splice(insertIdx, 0, { id: draggingId, col, colSpan: span });
-            } else {
-                cardLayout.placements.splice(insertIdx, 0, { id: draggingId, col: srcPlacement.col, colSpan: span });
-            }
-            distributeCards();
-        }
-
-        /** @returns {void} */
-        function endDrag() {
+        /** @param {PointerEvent} e */
+        function onUp(e) {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
             stopAutoScroll();
-            if (!dragging) return;
-            getCards().forEach(c => c.classList.remove('drop-above', 'drop-below'));
-            dragging.classList.remove('dragging');
-            dragging = null;
+            document.querySelectorAll('.card.drop-above, .card.drop-below').forEach(c => {
+                c.classList.remove('drop-above', 'drop-below');
+            });
+            card.classList.remove('dragging');
+            if (!moved) return;
+            const target = findTarget(e.clientX, e.clientY);
+            if (!target || target === card) return;
+            const r = target.getBoundingClientRect();
+            const before = e.clientY < r.top + r.height / 2;
+            reorderForMobile(card.id, target.id, before);
+            render();
+            savePrefs();
         }
 
-        /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.drag-handle')).forEach(handle => {
-            handle.addEventListener('pointerdown', e => {
-                e.preventDefault();
-                dragging = handle.closest('.card');
-                hasMoved = false;
-                startX = e.clientX;
-                startY = e.clientY;
-                if (dragging) dragging.classList.add('dragging');
-                handle.setPointerCapture(e.pointerId);
-            });
-            handle.addEventListener('pointermove', e => {
-                if (!dragging) return;
-                if (!hasMoved) {
-                    const dx = e.clientX - startX, dy = e.clientY - startY;
-                    if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
-                    hasMoved = true;
-                }
-                tickAutoScroll(e.clientY);
-                updateDropIndicators(e.clientX, e.clientY);
-            });
-            handle.addEventListener('pointerup', e => {
-                if (!dragging) return;
-                if (hasMoved) {
-                    applyDrop(e.clientX, e.clientY);
-                    savePrefs();
-                }
-                endDrag();
-            });
-            handle.addEventListener('pointercancel', () => endDrag());
-        });
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
     }
 
-    // ─── CARD LAYOUT CONTROLS ───────────────────────────────────
+    /**
+     * Reorders the items array so that `draggedId` lands immediately
+     * before / after `targetId` in the mobile reading order. Because mobile
+     * is a single-column stack, this also flattens every card to full width
+     * (x=0, w=GRID_COLS) and stacks them with consecutive y values — which
+     * means a mobile reorder also flattens the desktop multi-column layout.
+     * Power users can re-arrange on a wide screen afterwards. Mutates layout.items.
+     * @param {string} draggedId
+     * @param {string} targetId
+     * @param {boolean} before
+     */
+    function reorderForMobile(draggedId, targetId, before) {
+        const sorted = sortByPosition(layout.items);
+        const fromIdx = sorted.findIndex(i => i.id === draggedId);
+        if (fromIdx < 0) return;
+        const [dragged] = sorted.splice(fromIdx, 1);
+        if (!dragged) return;
+        const tgtIdx = sorted.findIndex(i => i.id === targetId);
+        if (tgtIdx < 0) { sorted.splice(fromIdx, 0, dragged); return; }
+        sorted.splice(before ? tgtIdx : tgtIdx + 1, 0, dragged);
+        let y = 0;
+        for (const it of sorted) {
+            it.x = 0;
+            it.w = GRID_COLS;
+            it.y = y;
+            y += it.h;
+        }
+    }
 
-    /** Adds resize grips to cards and wires up the column-count stepper. */
-    function initCardLayoutControls() {
-        document.querySelectorAll('.card').forEach(card => {
-            const grip = document.createElement('button');
-            grip.className = 'card-resize-handle';
-            grip.setAttribute('aria-label', 'Cycle card width');
-            grip.textContent = '⊿';
-            card.appendChild(grip);
+    // ─── DRAG WIRING ────────────────────────────────────────────
 
-            grip.addEventListener('click', e => {
-                e.stopPropagation();
-                cycleCardSpan(card.id);
-                updateGripLabel(card);
-            });
+    /** @type {NodeListOf<HTMLElement>} */ (document.querySelectorAll('.drag-handle')).forEach(handle => {
+        handle.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            const card = /** @type {HTMLElement | null} */ (handle.closest('.card'));
+            if (!card) return;
+            handle.setPointerCapture(e.pointerId);
+            if (isDesktop()) beginDesktopDrag(card, e);
+            else beginMobileDrag(card, e);
         });
+    });
 
-        /**
-         * Updates the resize grip label to show current span.
-         * @param {Element} card
-         */
-        function updateGripLabel(card) {
-            const grip = card.querySelector('.card-resize-handle');
-            if (!grip) return;
-            const p = cardLayout.placements.find(pl => pl.id === card.id);
-            if (!p) return;
-            const span = effectiveSpan(p, cardLayout.numColumns);
-            if (span >= cardLayout.numColumns) {
-                grip.textContent = '⊿'; // full-width indicator
-            } else {
-                grip.textContent = '⊿';
+    // ─── RESIZE HANDLES ─────────────────────────────────────────
+
+    /**
+     * @param {HTMLElement} card
+     * @param {'right' | 'bottom' | 'corner'} edge
+     * @param {PointerEvent} startEvent
+     */
+    function beginResize(card, edge, startEvent) {
+        if (!isDesktop()) return;
+        const found = layout.items.find(it => it.id === card.id);
+        if (!found) return;
+        const grid = getGridEl();
+        if (!grid) return;
+        const gridRect = grid.getBoundingClientRect();
+        const colW = (gridRect.width - GRID_GAP_PX * (GRID_COLS - 1)) / GRID_COLS + GRID_GAP_PX;
+        // Effective per-row height including gap (rows in CSS grid don't share the gap
+        // boundary the same way, but using rowH alone is close enough for snap).
+        const rowH = ROW_HEIGHT_PX + GRID_GAP_PX;
+        const startW = found.w;
+        const startH = found.h;
+        const itemX = found.x;
+        const itemY = found.y;
+        const startCX = startEvent.clientX;
+        const startCY = startEvent.clientY;
+        const spec = specFor(card.id);
+        const minW = spec?.minW ?? 1;
+        const minH = spec?.minH ?? 1;
+        let moved = false;
+
+        /** @param {PointerEvent} e */
+        function onMove(e) {
+            const dx = e.clientX - startCX;
+            const dy = e.clientY - startCY;
+            if (!moved && Math.hypot(dx, dy) < DRAG_THRESHOLD_PX) return;
+            moved = true;
+            card.classList.add('resizing');
+            tickAutoScroll(e.clientY);
+            let w = startW;
+            let h = startH;
+            if (edge === 'right' || edge === 'corner') {
+                w = Math.max(minW, Math.min(GRID_COLS - itemX, startW + Math.round(dx / colW)));
             }
+            if (edge === 'bottom' || edge === 'corner') {
+                h = Math.max(minH, startH + Math.round(dy / rowH));
+            }
+            showPlaceholder(itemX, itemY, w, h);
         }
 
-        const colCountVal = document.getElementById('colCountVal');
-        if (colCountVal) colCountVal.textContent = String(cardLayout.numColumns);
+        /** @param {PointerEvent} e */
+        function onUp(e) {
+            window.removeEventListener('pointermove', onMove);
+            window.removeEventListener('pointerup', onUp);
+            window.removeEventListener('pointercancel', onUp);
+            stopAutoScroll();
+            card.classList.remove('resizing');
+            hidePlaceholder();
+            if (!moved) return;
+            const dx = e.clientX - startCX;
+            const dy = e.clientY - startCY;
+            let w = startW;
+            let h = startH;
+            if (edge === 'right' || edge === 'corner') w = startW + Math.round(dx / colW);
+            if (edge === 'bottom' || edge === 'corner') h = startH + Math.round(dy / rowH);
+            resizeItem(layout.items, card.id, w, h);
+            render();
+            savePrefs();
+        }
 
-        document.getElementById('colCountMinus')?.addEventListener('click', () => {
-            setNumColumns(cardLayout.numColumns - 1);
-            if (colCountVal) colCountVal.textContent = String(cardLayout.numColumns);
-        });
+        window.addEventListener('pointermove', onMove);
+        window.addEventListener('pointerup', onUp);
+        window.addEventListener('pointercancel', onUp);
+    }
 
-        document.getElementById('colCountPlus')?.addEventListener('click', () => {
-            setNumColumns(cardLayout.numColumns + 1);
-            if (colCountVal) colCountVal.textContent = String(cardLayout.numColumns);
+    /** Adds three resize handles (right, bottom, corner) to every card. */
+    function initResizeHandles() {
+        document.querySelectorAll('.card').forEach(cardEl => {
+            const card = /** @type {HTMLElement} */ (cardEl);
+            /** @type {Array<'right' | 'bottom' | 'corner'>} */
+            const edges = ['right', 'bottom', 'corner'];
+            for (const edge of edges) {
+                const h = document.createElement('div');
+                h.className = `card-resize-handle card-resize-${edge}`;
+                h.setAttribute('aria-label', `Resize ${edge}`);
+                card.appendChild(h);
+                h.addEventListener('pointerdown', e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    h.setPointerCapture(e.pointerId);
+                    beginResize(card, edge, e);
+                });
+            }
         });
     }
 
-    // ─── CARD COLLAPSE ──────────────────────────────────────────
+    // ─── COLLAPSE ───────────────────────────────────────────────
 
-    /** Restores collapsed card state from prefs and wires up collapse toggle buttons. */
     function initCardCollapse() {
         const prefs0 = loadPrefs();
         const collapsed = new Set(prefs0.collapsedCards ?? []);
@@ -561,18 +509,16 @@ export function initCards(opts) {
         });
     }
 
-    // ─── WIRE UP & RETURN API ───────────────────────────────────
+    // ─── INIT ───────────────────────────────────────────────────
     initCardCollapse();
-    initCardLayoutControls();
-    initCardDrag();
-    distributeCards();
-    window.matchMedia('(min-width: 700px)').addEventListener('change', distributeCards);
+    initResizeHandles();
+    render();
+    window.matchMedia(`(min-width: ${MOBILE_BREAKPOINT}px)`).addEventListener('change', render);
 
     return {
-        distributeCards,
+        render,
         getCardLayout: () => ({
-            numColumns: cardLayout.numColumns,
-            placements: cardLayout.placements.map(p => ({ ...p })),
+            items: layout.items.map(it => ({ ...it })),
         }),
         getCollapsedCardIds: () => [...document.querySelectorAll('.card.collapsed')].map(c => c.id),
     };
