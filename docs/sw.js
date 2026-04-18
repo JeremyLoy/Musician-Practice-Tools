@@ -11,7 +11,7 @@
 //   IMPORTANT: Also update APP_VERSION in app.js to the same string so the
 //   footer displays the correct version. Always bump both when deploying.
 
-const CACHE_VERSION = 'toolkit-20260417-0351';
+const CACHE_VERSION = 'toolkit-20260417-1845';
 
 // Every file the app needs to work offline.
 // If you add a new file to docs/, add it to this list too.

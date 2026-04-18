@@ -9,6 +9,7 @@
 import {
     GRID_COLS,
     ROW_HEIGHT_PX,
+    GRID_GAP_PX,
     ALL_CARD_IDS,
     specFor,
     defaultGridLayout,
@@ -17,6 +18,7 @@ import {
     moveItem,
     resizeItem,
     sortByPosition,
+    computeCols,
 } from './grid-layout.js';
 
 // ─── Type Definitions ────────────────────────────────────────────────────────
@@ -43,7 +45,6 @@ const MOBILE_BREAKPOINT = 700;
 const DRAG_THRESHOLD_PX = 5;
 const SCROLL_ZONE_PX = 80;
 const SCROLL_SPEED_PX = 8;
-const GRID_GAP_PX = 24; // matches CSS gap on .card-grid
 
 // ─── INIT ───────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,9 @@ export function initCards(opts) {
 
     /** @type {GridLayoutPrefs} */
     let layout = defaultGridLayout();
+    /** The column count used for the current render. Recomputed per render
+     *  from the container width so each column stays ≥ MIN_COL_PX. */
+    let activeCols = GRID_COLS;
     {
         const prefs0 = loadPrefs();
         // Only accept prefs that match the new shape ({items: GridItem[]}).
@@ -77,6 +81,22 @@ export function initCards(opts) {
         return window.innerWidth >= MOBILE_BREAKPOINT;
     }
 
+    /**
+     * Measures the width available for the card grid and derives the active
+     * column count from it. Called right before rendering so CSS reflows and
+     * viewport changes are picked up automatically.
+     * @returns {number}
+     */
+    function measureActiveCols() {
+        // Body padding + any scrollbar take a bite out of window.innerWidth;
+        // prefer the actual .card-grid width when the grid already exists.
+        const existing = getGridEl();
+        const widthPx = existing
+            ? existing.getBoundingClientRect().width
+            : document.body.clientWidth - 48; // approximate body padding fallback
+        return computeCols(widthPx);
+    }
+
     // ─── RENDER ─────────────────────────────────────────────────
 
     /**
@@ -94,16 +114,24 @@ export function initCards(opts) {
         if (isDesktop()) {
             const grid = document.createElement('div');
             grid.className = 'card-grid';
+            // Insert first so clientWidth reflects the real container width,
+            // then measure to derive the active column count.
+            document.body.insertBefore(grid, footer);
+            activeCols = computeCols(grid.getBoundingClientRect().width);
+            // Re-clamp the stored layout into the current column count. Items
+            // wider than activeCols get narrowed; x gets shifted in range.
+            validate(layout, activeCols);
+            compactVertical(layout.items);
             grid.style.setProperty('--row-h', `${ROW_HEIGHT_PX}px`);
-            grid.style.setProperty('--grid-cols', String(GRID_COLS));
+            grid.style.setProperty('--grid-cols', String(activeCols));
             for (const it of layout.items) {
                 const el = /** @type {HTMLElement | null} */ (document.getElementById(it.id));
                 if (!el) continue;
                 applyGridStyle(el, it);
                 grid.appendChild(el);
             }
-            document.body.insertBefore(grid, footer);
         } else {
+            activeCols = GRID_COLS;
             for (const it of sortByPosition(layout.items)) {
                 const el = /** @type {HTMLElement | null} */ (document.getElementById(it.id));
                 if (!el) continue;
@@ -140,7 +168,9 @@ export function initCards(opts) {
     }
 
     /**
-     * Converts a viewport pixel position to a grid cell.
+     * Converts a viewport pixel position to a grid cell. Both pitches include
+     * the 24px CSS gap — without that, the placeholder drifts down faster
+     * than the cursor as you drag (row pitch is 64px, not 40px).
      * @param {number} clientX
      * @param {number} clientY
      * @returns {{ x: number, y: number } | null}
@@ -149,9 +179,11 @@ export function initCards(opts) {
         const grid = getGridEl();
         if (!grid) return null;
         const r = grid.getBoundingClientRect();
-        const colW = r.width / GRID_COLS;
-        const x = Math.round((clientX - r.left) / colW);
-        const y = Math.round((clientY - r.top) / ROW_HEIGHT_PX);
+        // Column pitch: total width = N*colW + (N-1)*gap, so colPitch = colW + gap = (width + gap) / N.
+        const colPitch = (r.width + GRID_GAP_PX) / activeCols;
+        const rowPitch = ROW_HEIGHT_PX + GRID_GAP_PX;
+        const x = Math.round((clientX - r.left) / colPitch);
+        const y = Math.round((clientY - r.top) / rowPitch);
         return { x, y };
     }
 
@@ -254,7 +286,7 @@ export function initCards(opts) {
             // i.e. cursor minus the original pointer-to-corner offset.
             const cell = pxToCell(e.clientX - offsetX, e.clientY - offsetY);
             if (!cell) return;
-            const x = Math.max(0, Math.min(GRID_COLS - itemW, cell.x));
+            const x = Math.max(0, Math.min(activeCols - itemW, cell.x));
             const y = Math.max(0, cell.y);
             showPlaceholder(x, y, itemW, itemH);
         }
@@ -270,9 +302,9 @@ export function initCards(opts) {
             if (!moved) return;
             const cell = pxToCell(e.clientX - offsetX, e.clientY - offsetY);
             if (!cell) return;
-            const x = Math.max(0, Math.min(GRID_COLS - itemW, cell.x));
+            const x = Math.max(0, Math.min(activeCols - itemW, cell.x));
             const y = Math.max(0, cell.y);
-            moveItem(layout.items, card.id, x, y);
+            moveItem(layout.items, card.id, x, y, activeCols);
             render();
             savePrefs();
         }
@@ -414,7 +446,7 @@ export function initCards(opts) {
         const grid = getGridEl();
         if (!grid) return;
         const gridRect = grid.getBoundingClientRect();
-        const colW = (gridRect.width - GRID_GAP_PX * (GRID_COLS - 1)) / GRID_COLS + GRID_GAP_PX;
+        const colW = (gridRect.width - GRID_GAP_PX * (activeCols - 1)) / activeCols + GRID_GAP_PX;
         // Effective per-row height including gap (rows in CSS grid don't share the gap
         // boundary the same way, but using rowH alone is close enough for snap).
         const rowH = ROW_HEIGHT_PX + GRID_GAP_PX;
@@ -440,7 +472,7 @@ export function initCards(opts) {
             let w = startW;
             let h = startH;
             if (edge === 'right' || edge === 'corner') {
-                w = Math.max(minW, Math.min(GRID_COLS - itemX, startW + Math.round(dx / colW)));
+                w = Math.max(minW, Math.min(activeCols - itemX, startW + Math.round(dx / colW)));
             }
             if (edge === 'bottom' || edge === 'corner') {
                 h = Math.max(minH, startH + Math.round(dy / rowH));
@@ -463,7 +495,7 @@ export function initCards(opts) {
             let h = startH;
             if (edge === 'right' || edge === 'corner') w = startW + Math.round(dx / colW);
             if (edge === 'bottom' || edge === 'corner') h = startH + Math.round(dy / rowH);
-            resizeItem(layout.items, card.id, w, h);
+            resizeItem(layout.items, card.id, w, h, activeCols);
             render();
             savePrefs();
         }
@@ -514,6 +546,21 @@ export function initCards(opts) {
     initResizeHandles();
     render();
     window.matchMedia(`(min-width: ${MOBILE_BREAKPOINT}px)`).addEventListener('change', render);
+
+    // Re-render when the viewport crosses a column-count breakpoint. Debounced
+    // with requestAnimationFrame so a continuous drag of the window edge
+    // doesn't thrash; the viewport doesn't change often in practice.
+    /** @type {number | null} */
+    let resizeRaf = null;
+    window.addEventListener('resize', () => {
+        if (resizeRaf !== null) cancelAnimationFrame(resizeRaf);
+        resizeRaf = requestAnimationFrame(() => {
+            resizeRaf = null;
+            if (!isDesktop()) return; // mobile stack doesn't care about cols
+            const nextCols = measureActiveCols();
+            if (nextCols !== activeCols) render();
+        });
+    });
 
     return {
         render,

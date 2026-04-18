@@ -2,6 +2,8 @@ import { describe, test, expect } from 'bun:test';
 import {
     GRID_COLS,
     ROW_HEIGHT_PX,
+    GRID_GAP_PX,
+    MIN_COL_PX,
     CARD_SPECS,
     ALL_CARD_IDS,
     specFor,
@@ -13,6 +15,7 @@ import {
     moveItem,
     resizeItem,
     sortByPosition,
+    computeCols,
 } from '../docs/grid-layout.js';
 
 describe('constants', () => {
@@ -234,6 +237,45 @@ describe('moveItem', () => {
         expect(drone.x).toBe(6);
         expect(drone.y).toBe(0);
     });
+    test('moved card pulls up when dropped into empty space (Grafana-style)', () => {
+        const items = [
+            { id: 'drone-card', x: 0, y: 0, w: 6, h: 10 },
+            { id: 'metro-card', x: 6, y: 0, w: 6, h: 10 },
+        ];
+        // Drop drone far below — nothing is in its column above y=50.
+        moveItem(items, 'drone-card', 0, 50);
+        const drone = /** @type {import('../docs/grid-layout.js').GridItem} */ (items.find(i => i.id === 'drone-card'));
+        expect(drone.y).toBe(0);
+    });
+    test('dropping onto an occupied slot, moved card wins the slot', () => {
+        const items = [
+            { id: 'drone-card', x: 0, y: 0,  w: 6, h: 10 },
+            { id: 'tuner-card', x: 0, y: 10, w: 6, h: 8 },
+        ];
+        // Drop tuner onto drone's slot — tuner should take (0, 0), drone shifts down.
+        moveItem(items, 'tuner-card', 0, 0);
+        const tuner = /** @type {import('../docs/grid-layout.js').GridItem} */ (items.find(i => i.id === 'tuner-card'));
+        const drone = /** @type {import('../docs/grid-layout.js').GridItem} */ (items.find(i => i.id === 'drone-card'));
+        expect(tuner.y).toBe(0);
+        expect(drone.y).toBeGreaterThanOrEqual(tuner.y + tuner.h);
+    });
+    test('no gaps above any card after a move', () => {
+        const items = defaultGridLayout().items;
+        moveItem(items, 'drone-card', 0, 99);
+        // For every card, the space directly above (same column span) must be
+        // either the grid top or occupied by another card — no dead air.
+        for (const a of items) {
+            if (a.y === 0) continue;
+            const blockedAbove = items.some(b =>
+                b !== a
+                && b.x < a.x + a.w
+                && a.x < b.x + b.w
+                && b.y + b.h === a.y
+            );
+            // Some card must butt up against `a` from above.
+            expect(blockedAbove).toBe(true);
+        }
+    });
     test('clamps target x so card stays within grid', () => {
         const items = defaultGridLayout().items;
         moveItem(items, 'drone-card', 99, 0);
@@ -296,6 +338,62 @@ describe('resizeItem', () => {
         const snap = JSON.stringify(items);
         resizeItem(items, 'nope-card', 6, 6);
         expect(JSON.stringify(items)).toBe(snap);
+    });
+});
+
+describe('computeCols', () => {
+    test('returns GRID_COLS when viewport is very wide', () => {
+        expect(computeCols(99_999)).toBe(GRID_COLS);
+    });
+    test('returns 1 for zero or negative width', () => {
+        expect(computeCols(0)).toBe(1);
+        expect(computeCols(-50)).toBe(1);
+    });
+    test('shrinks column count as width shrinks', () => {
+        // Enough for exactly 6 columns: 6*minCol + 5*gap
+        const exactly6 = 6 * MIN_COL_PX + 5 * GRID_GAP_PX;
+        expect(computeCols(exactly6)).toBe(6);
+        // 1px less → can only fit 5 (since 5*(min+gap) + min fits, but 6 doesn't)
+        expect(computeCols(exactly6 - 1)).toBeLessThanOrEqual(6);
+    });
+    test('monotonic: more width never gives fewer columns', () => {
+        let prev = 0;
+        for (let w = 0; w < 2000; w += 37) {
+            const n = computeCols(w);
+            expect(n).toBeGreaterThanOrEqual(prev);
+            prev = n;
+        }
+    });
+});
+
+describe('cols parameter: clampItem and friends honour a smaller active grid', () => {
+    test('clampItem narrows a card wider than cols', () => {
+        const it = clampItem({ id: 'drone-card', x: 0, y: 0, w: 10, h: 10 }, 8);
+        expect(it.w).toBeLessThanOrEqual(8);
+        expect(it.x + it.w).toBeLessThanOrEqual(8);
+    });
+    test('clampItem shifts x when x+w exceeds cols', () => {
+        const it = clampItem({ id: 'drone-card', x: 6, y: 0, w: 6, h: 10 }, 8);
+        expect(it.x + it.w).toBeLessThanOrEqual(8);
+    });
+    test('validate clamps all items to the new cols', () => {
+        const layout = defaultGridLayout();
+        validate(layout, 6);
+        for (const it of layout.items) {
+            expect(it.x + it.w).toBeLessThanOrEqual(6);
+        }
+    });
+    test('resizeItem respects cols as the hard right edge', () => {
+        const items = defaultGridLayout().items;
+        // metro-card defaults to x=6; with cols=8, w can be at most 2.
+        resizeItem(items, 'metro-card', 99, 10, 8);
+        const metro = /** @type {import('../docs/grid-layout.js').GridItem} */ (items.find(i => i.id === 'metro-card'));
+        expect(metro.x + metro.w).toBeLessThanOrEqual(8);
+    });
+    test('when cols < spec.minW, the card shrinks to cols (grid is hard boundary)', () => {
+        // metro-card has minW=6; at cols=4 it cannot honour minW.
+        const it = clampItem({ id: 'metro-card', x: 0, y: 0, w: 6, h: 10 }, 4);
+        expect(it.w).toBe(4);
     });
 });
 
